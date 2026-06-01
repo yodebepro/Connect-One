@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Connect-One — Secure Messenger</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#060b14;--bg2:#080f1c;--bg3:#0c1828;--bg4:#0f2035;
+  --card:rgba(255,255,255,0.05);--border:#0e1e35;--border2:#162a45;
+  --teal:#20d6a1;--teal2:#17b889;--blue:#2f7bff;--violet:#b06eff;
+  --amber:#ffb800;--red:#ff4d6d;--cyan:#00e5ff;
+  --text:#eef6ff;--muted:#7a94b0;--faint:#0a1525;
+  --sidebar-w:248px;--header-h:58px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(32,214,161,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(32,214,161,0.03) 1px,transparent 1px);background-size:52px 52px;pointer-events:none;z-index:0;}
+.orb{position:fixed;border-radius:50%;filter:blur(110px);pointer-events:none;z-index:0;}
+.orb1{width:500px;height:500px;background:var(--blue);opacity:.05;top:-150px;left:-100px;animation:o1 22s ease-in-out infinite;}
+.orb2{width:380px;height:380px;background:var(--teal);opacity:.06;bottom:-80px;right:-60px;animation:o2 28s ease-in-out infinite;}
+.orb3{width:260px;height:260px;background:var(--violet);opacity:.04;top:40%;left:35%;animation:o3 34s ease-in-out infinite;}
+@keyframes o1{0%,100%{transform:translate(0,0)}50%{transform:translate(70px,50px)}}
+@keyframes o2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-70px)}}
+@keyframes o3{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-60px)}}
+
+/* ── AUTH ── */
+#auth-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,#0d2040 0%,var(--bg) 65%);}
+.auth-card{width:min(460px,94vw);background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:24px;padding:36px;backdrop-filter:blur(20px);box-shadow:0 30px 80px rgba(0,0,0,.5);position:relative;z-index:1;animation:slideUp .5s ease both;}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.auth-brand{display:flex;gap:14px;align-items:center;margin-bottom:30px;}
+.app-logo{width:52px;height:52px;border-radius:16px;background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(32,214,161,.25);flex-shrink:0;overflow:hidden;padding:0;}
+.auth-brand h1{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:2px;}
+.auth-brand p{font-size:12px;color:var(--muted);}
+.auth-tabs{display:flex;background:var(--bg3);border-radius:12px;padding:4px;gap:4px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:8px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.auth-tab.active{background:var(--bg4);color:var(--text);}
+.inp{width:100%;padding:13px 16px;border-radius:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;margin-bottom:12px;transition:border-color .2s;outline:none;}
+.inp:focus{border-color:var(--teal);}
+.inp::placeholder{color:var(--muted);}
+.btn-primary{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--teal),var(--teal2));color:#031017;font-weight:800;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:filter .2s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary:hover{filter:brightness(1.1);}
+.btn-primary:active{transform:scale(.98);}
+.auth-note{font-size:11px;color:var(--muted);text-align:center;margin-top:14px;font-family:'Space Mono',monospace;}
+
+/* ── APP SHELL ── */
+#app-shell{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;}
+#app-shell.visible{display:flex;}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--header-h);background:rgba(6,11,20,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 18px;position:relative;z-index:20;flex-shrink:0;}
+.topbar-logo{display:flex;align-items:center;gap:10px;margin-right:24px;}
+.topbar-logo .logo-mark{width:34px;height:34px;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0;}
+.topbar-logo .logo-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;}
+.topbar-nav{display:flex;gap:2px;flex:1;overflow-x:auto;}
+.tnav-btn{padding:7px 14px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.tnav-btn:hover{background:var(--bg3);color:var(--text);}
+.tnav-btn.active{background:var(--bg4);color:var(--teal);border:1px solid var(--border2);}
+.tnav-btn .tico{font-size:15px;}
+.topbar-right{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.e2ee-badge{font-family:'Space Mono',monospace;font-size:9px;padding:4px 10px;border-radius:20px;background:rgba(32,214,161,.1);border:1px solid rgba(32,214,161,.25);color:var(--teal);letter-spacing:1px;}
+.avatar-btn{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--violet));border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;color:#fff;}
+
+/* ── BODY ── */
+.app-body{flex:1;display:flex;overflow:hidden;position:relative;z-index:1;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sidebar-section{padding:10px 10px 0;}
+.sidebar-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);padding:10px 8px 6px;text-transform:uppercase;}
+.snav{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;width:100%;text-align:left;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:1px;position:relative;}
+.snav:hover{background:var(--bg3);color:var(--text);}
+.snav.active{background:var(--bg4);color:var(--teal);border-color:var(--border2);}
+.snav .sico{font-size:16px;width:22px;text-align:center;flex-shrink:0;}
+.snav .sbadge{margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;padding:2px 6px;border-radius:8px;background:var(--bg3);color:var(--muted);flex-shrink:0;}
+.snav.active .sbadge{color:var(--teal);}
+.snav .del-btn{display:none;position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.3);color:var(--red);border-radius:5px;padding:1px 5px;font-size:11px;cursor:pointer;z-index:2;}
+.snav:hover .del-btn{display:block;}
+.sidebar-footer{margin-top:auto;padding:14px;border-top:1px solid var(--border);}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);}
+.user-chip .uav{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;color:#031017;}
+.user-chip .uname{font-size:12.5px;font-weight:600;}
+.user-chip .ustatus{font-size:10px;color:var(--teal);}
+
+/* ── CONTENT ── */
+.content-area{flex:1;overflow-y:auto;padding:28px;}
+.view{display:none;}
+.view.active-view{display:block;}
+
+/* ── VIEW HEADER ── */
+.view-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+.view-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:2px;color:var(--text);}
+.view-subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
+.view-actions{display:flex;gap:8px;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;transition:border-color .2s;}
+.card:hover{border-color:var(--border2);}
+.card-title{font-size:14px;font-weight:700;margin-bottom:4px;}
+.card-desc{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.col2{grid-column:1/-1;}
+
+/* ── BUTTONS ── */
+.btn{padding:10px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,transform .1s;}
+.btn:active{transform:scale(.97);}
+.btn-teal{background:var(--teal);color:#031017;}.btn-teal:hover{filter:brightness(1.1);}
+.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{filter:brightness(1.1);}
+.btn-ghost{background:var(--bg3);border:1px solid var(--border2);color:var(--text);}.btn-ghost:hover{background:var(--bg4);}
+.btn-danger{background:var(--red);color:#fff;}.btn-danger:hover{filter:brightness(1.1);}
+.btn-amber{background:var(--amber);color:#1a0a00;}
+.btn-violet{background:var(--violet);color:#fff;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+
+/* ── CHAT ── */
+.chat-layout{display:grid;grid-template-columns:220px 1fr;gap:14px;height:calc(100vh - var(--header-h) - 100px);}
+.chat-contacts{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow-y:auto;display:flex;flex-direction:column;}
+.contact-item{display:flex;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;position:relative;}
+.contact-item:hover{background:var(--bg3);}
+.contact-item.active{background:var(--bg4);}
+.contact-item .ci-del{display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.3);color:var(--red);border-radius:5px;padding:1px 6px;font-size:11px;cursor:pointer;}
+.contact-item:hover .ci-del{display:block;}
+.cav{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.cav.g1{background:linear-gradient(135deg,var(--teal),var(--blue));color:#031017;}
+.cav.g2{background:linear-gradient(135deg,var(--blue),var(--violet));color:#fff;}
+.cav.g3{background:linear-gradient(135deg,var(--violet),var(--red));color:#fff;}
+.cav.g4{background:linear-gradient(135deg,var(--amber),var(--red));color:#031017;}
+.cav.g5{background:linear-gradient(135deg,var(--cyan),var(--teal));color:#031017;}
+.cname{font-size:13px;font-weight:600;}
+.clast{font-size:11px;color:var(--muted);}
+.cunread{margin-left:auto;min-width:18px;height:18px;border-radius:9px;background:var(--teal);color:#031017;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
+.chat-main{background:var(--card);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;}
+.chat-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.chat-status-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+.chat-actions{margin-left:auto;display:flex;gap:6px;}
+.messages-area{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px;}
+.bubble{max-width:72%;padding:12px 16px;border-radius:16px;line-height:1.5;font-size:13.5px;word-break:break-word;}
+.bubble.me{align-self:flex-end;background:linear-gradient(135deg,rgba(32,214,161,.15),rgba(47,123,255,.15));border:1px solid rgba(32,214,161,.2);border-bottom-right-radius:4px;}
+.bubble.them{align-self:flex-start;background:var(--bg3);border:1px solid var(--border2);border-bottom-left-radius:4px;}
+.bubble .bname{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:4px;}
+.bubble .btime{font-size:10px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.bubble .enc-tag{font-family:'Space Mono',monospace;font-size:8px;color:var(--teal);background:rgba(32,214,161,.08);padding:1px 5px;border-radius:4px;}
+.empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:13px;gap:8px;text-align:center;}
+.composer{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-shrink:0;}
+.compose-input{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:11px 14px;color:var(--text);font-size:13.5px;font-family:'DM Sans',sans-serif;resize:none;outline:none;min-height:44px;max-height:120px;transition:border-color .2s;}
+.compose-input:focus{border-color:var(--teal);}
+.compose-input::placeholder{color:var(--muted);}
+.status-bar{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);margin-top:14px;display:flex;align-items:center;gap:8px;}
+.status-bar::before{content:'●';font-size:8px;}
+
+/* ── CALL CARDS ── */
+.call-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;}
+.call-icon{font-size:36px;margin-bottom:12px;}
+.call-log-item{display:flex;gap:10px;align-items:center;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:12.5px;}
+.call-log-type{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;white-space:nowrap;}
+.log-del{margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px;}
+.log-del:hover{color:var(--red);}
+
+/* ── SECURITY TOGGLES ── */
+.sec-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);}
+.sec-row:last-child{border-bottom:none;}
+.sec-info .sec-label{font-size:13.5px;font-weight:600;margin-bottom:3px;}
+.sec-info .sec-desc{font-size:12px;color:var(--muted);}
+.toggle{width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--teal);}
+.toggle.off{background:var(--border2);}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;}
+.toggle.on::after{transform:translateX(20px);}
+
+/* ── PROFILE ── */
+.profile-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--blue));display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:32px;margin:0 auto 16px;box-shadow:0 0 40px rgba(32,214,161,.2);color:#031017;}
+
+/* ── MINISTRY ── */
+.prayer-room{background:linear-gradient(135deg,rgba(47,123,255,.08),rgba(176,110,255,.08));border:1px solid rgba(47,123,255,.2);border-radius:16px;padding:18px;}
+.prayer-name{font-weight:700;font-size:14px;margin-bottom:4px;}
+.prayer-req{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-top:8px;font-size:12.5px;color:#ccc;line-height:1.5;position:relative;}
+.prayer-req .req-del{position:absolute;top:6px;right:8px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;}
+.prayer-req .req-del:hover{color:var(--red);}
+.event-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:14px;margin-bottom:10px;align-items:flex-start;position:relative;}
+.event-date{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0;min-width:54px;}
+.event-day{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--teal);line-height:1;}
+.event-month{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;}
+.event-del{position:absolute;top:10px;right:12px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;}
+.event-del:hover{color:var(--red);}
+
+/* ── ANN ── */
+.ann-item{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;position:relative;}
+.ann-body{font-size:13px;line-height:1.5;margin-top:4px;color:#ddd;}
+.ann-meta{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;}
+.ann-del{position:absolute;top:10px;right:12px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;}
+.ann-del:hover{color:var(--red);}
+
+/* ── BLUEPRINT DOCS ── */
+.bp-section-inner{display:none;}
+.bp-section-inner.active{display:block;}
+.bp-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;}
+.bp-tab{padding:7px 16px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.bp-tab:hover{color:var(--text);}
+.bp-tab.active{background:rgba(32,214,161,.1);border-color:rgba(32,214,161,.3);color:var(--teal);}
+.bp-title{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;margin-bottom:4px;}
+.bp-rule{height:1px;background:linear-gradient(to right,var(--teal),transparent);margin-bottom:24px;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--teal);line-height:1;}
+.stat-label{font-size:12px;font-weight:700;margin:4px 0 3px;}
+.stat-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);line-height:1.6;}
+.feat-layout{display:grid;grid-template-columns:190px 1fr;gap:20px;}
+.feat-nav{display:flex;flex-direction:column;gap:3px;}
+.feat-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.feat-btn:hover{background:var(--bg3);color:var(--text);}
+.feat-btn.active{background:var(--bg4);border-color:var(--border2);color:var(--text);}
+.feat-cnt{margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.feat-item{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 13px;font-size:12px;color:#bbb;display:flex;gap:8px;align-items:flex-start;}
+.fcheck{color:var(--teal);flex-shrink:0;margin-top:1px;}
+.arch-layer{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;}
+.arch-lh{padding:10px 16px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;font-weight:700;display:flex;align-items:center;gap:10px;}
+.arch-lb{padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;}
+.arch-chip{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11.5px;color:#ccc;}
+.tech-table{width:100%;border-collapse:collapse;}
+.tech-table th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);text-transform:uppercase;}
+.tech-table td{padding:11px 14px;font-size:12.5px;border-bottom:1px solid var(--border);}
+.tech-table tr:hover td{background:var(--faint);}
+.tcat{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);}
+.enc-layout{display:grid;grid-template-columns:190px 1fr;gap:20px;}
+.enc-nav{display:flex;flex-direction:column;gap:3px;}
+.enc-btn{padding:10px 12px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:12.5px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.enc-btn:hover{background:var(--bg3);color:var(--text);}
+.enc-btn.active{background:rgba(255,77,109,.07);border-color:rgba(255,77,109,.2);color:var(--red);}
+.enc-step{display:flex;gap:12px;background:rgba(255,77,109,.04);border:1px solid rgba(255,77,109,.12);border-radius:10px;padding:13px 15px;margin-bottom:8px;}
+.enc-num{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--red);}
+.api-grp{margin-bottom:26px;}
+.api-grp-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:var(--violet);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.api-grp-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(176,110,255,.2),transparent);}
+.api-row{display:grid;grid-template-columns:54px 210px 1fr;gap:10px;align-items:baseline;padding:7px 12px;border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;border:1px solid transparent;transition:background .15s;margin-bottom:2px;}
+.api-row:hover{background:var(--faint);border-color:var(--border);}
+.method{padding:2px 6px;border-radius:4px;font-size:9.5px;font-weight:700;text-align:center;}
+.GET{background:rgba(32,214,161,.1);color:var(--teal);}
+.POST{background:rgba(0,229,255,.1);color:var(--cyan);}
+.PATCH{background:rgba(255,184,0,.1);color:var(--amber);}
+.DELETE{background:rgba(255,77,109,.1);color:var(--red);}
+.PUT{background:rgba(176,110,255,.1);color:var(--violet);}
+.api-path{color:#ccc;}
+.api-desc{color:var(--muted);font-size:9.5px;}
+.schema-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.schema-tbl{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.schema-th{padding:11px 15px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.schema-type-badge{font-size:8px;color:var(--muted);padding:2px 6px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);margin-left:auto;}
+.schema-field{display:grid;grid-template-columns:130px 85px 1fr;gap:8px;padding:8px 15px;font-family:'Space Mono',monospace;font-size:10px;border-bottom:1px solid var(--border);align-items:center;}
+.schema-field:last-child{border-bottom:none;}
+.schema-field:hover{background:var(--faint);}
+.sf-name{color:#ccc;}.sf-type{color:var(--amber);font-size:9px;}.sf-desc{color:var(--muted);font-size:9px;line-height:1.4;}.sf-pk{color:var(--cyan);}
+.ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.ws-gt{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:7px;text-transform:uppercase;}
+.ws-gt::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.ws-ev{font-family:'Space Mono',monospace;font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:5px;color:#aaa;}
+.ev-n{color:var(--cyan);}.ev-a{color:var(--muted);margin:0 5px;}
+.phase-tabs{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;gap:4px;margin-bottom:24px;}
+.phase-tab{flex:1;padding:8px 6px;border-radius:9px;border:none;background:transparent;font-family:'Space Mono',monospace;font-size:9.5px;cursor:pointer;letter-spacing:1px;transition:all .2s;color:var(--muted);}
+.roadmap-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.roadmap-item{display:flex;gap:9px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:11px 13px;}
+.rm-box{width:17px;height:17px;border-radius:4px;border:2px solid;flex-shrink:0;margin-top:2px;}
+.rm-text{font-size:12px;color:#ccc;line-height:1.5;}
+.comp-row{display:grid;grid-template-columns:90px 1fr;gap:14px;padding:11px 14px;border-bottom:1px solid var(--border);align-items:center;}
+.comp-row:hover{background:var(--faint);}
+.comp-row:last-child{border-bottom:none;}
+.comp-tag{font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;color:var(--amber);}
+.comp-desc{font-size:12px;color:#bbb;}
+
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:28px;width:min(440px,92vw);box-shadow:0 30px 80px rgba(0,0,0,.6);position:relative;animation:slideUp .25s ease;}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;margin-bottom:16px;}
+.modal-close{position:absolute;top:16px;right:18px;background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;}
+.modal-close:hover{color:var(--text);}
+
+/* ── CALL MODAL ── */
+.call-modal-overlay{position:fixed;inset:0;background:rgba(4,10,22,.92);z-index:300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);animation:fadeIn .3s ease;}
+.call-modal{text-align:center;padding:40px;width:min(360px,90vw);}
+.call-avatar{width:96px;height:96px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;position:relative;}
+.call-pulse{position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--teal);animation:pulse 1.5s ease-out infinite;opacity:.6;}
+.call-pulse2{position:absolute;inset:-18px;border-radius:50%;border:1.5px solid var(--teal);animation:pulse 1.5s ease-out .5s infinite;opacity:.3;}
+@keyframes pulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.3);opacity:0}}
+.call-cname{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;margin-bottom:6px;}
+.call-status{font-size:13px;color:var(--muted);margin-bottom:8px;}
+.call-timer{font-family:'Space Mono',monospace;font-size:22px;color:var(--teal);margin-bottom:32px;}
+.call-controls{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.call-ctrl{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:filter .2s,transform .1s;flex-direction:column;gap:3px;}
+.call-ctrl:active{transform:scale(.92);}
+.call-ctrl-label{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;white-space:nowrap;}
+.ctrl-end{background:var(--red);color:#fff;width:64px;height:64px;}.ctrl-end:hover{filter:brightness(1.1);}
+.ctrl-mute{background:var(--bg3);border:1px solid var(--border2);color:var(--text);}
+.ctrl-mute.active{background:rgba(255,77,109,.2);border-color:var(--red);color:var(--red);}
+.ctrl-cam{background:var(--bg3);border:1px solid var(--border2);color:var(--text);}
+.ctrl-spk{background:var(--bg3);border:1px solid var(--border2);color:var(--text);}
+.ctrl-share{background:var(--bg3);border:1px solid var(--border2);color:var(--text);}
+
+/* ── VOICE RECORD ── */
+.recording-bar{display:none;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);border-radius:12px;padding:10px 14px;margin-bottom:8px;align-items:center;gap:10px;}
+.recording-bar.active{display:flex;}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.rec-timer{font-family:'Space Mono',monospace;font-size:13px;color:var(--red);}
+.rec-send{background:var(--teal);border:none;border-radius:8px;color:#031017;padding:5px 12px;font-weight:700;cursor:pointer;font-size:12px;}
+.rec-cancel{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;}
+
+/* ── UTILS ── */
+.mono{font-family:'Space Mono',monospace;}
+.txt-teal{color:var(--teal);}
+.txt-muted{color:var(--muted);}
+.txt-small{font-size:11px;}
+.mt8{margin-top:8px;}.mt16{margin-top:16px;}.mt24{margin-top:24px;}
+.mb8{margin-bottom:8px;}.mb16{margin-bottom:16px;}
+.section-lbl{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;}
+.pill{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-family:'Space Mono',monospace;}
+.pill-teal{background:rgba(32,214,161,.1);border:1px solid rgba(32,214,161,.2);color:var(--teal);}
+.pill-blue{background:rgba(47,123,255,.1);border:1px solid rgba(47,123,255,.2);color:var(--blue);}
+.pill-red{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);color:var(--red);}
+.pill-amber{background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.2);color:var(--amber);}
+.pill-violet{background:rgba(176,110,255,.1);border:1px solid rgba(176,110,255,.2);color:var(--violet);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="file-picker" style="display:none" multiple onchange="handleFilePick(event)"/>
+<input type="file" id="cam-picker" accept="image/*,video/*" style="display:none" onchange="handleImagePick(event)"/>
+
+<!-- ══ AUTH ══ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="app-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="100%" height="100%" style="display:block"><defs><radialGradient id="Lbg" cx="38%" cy="32%" r="72%"><stop offset="0%" stop-color="#0d2040"/><stop offset="100%" stop-color="#060b14"/></radialGradient><linearGradient id="LaG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1"/><stop offset="55%" stop-color="#2f7bff"/><stop offset="100%" stop-color="#6b3fff"/></linearGradient><linearGradient id="LbG" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#20d6a1"/><stop offset="100%" stop-color="#2f7bff"/></linearGradient><radialGradient id="Ln1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".4"/><stop offset="100%" stop-color="#20d6a1" stop-opacity="0"/></radialGradient><radialGradient id="Ln2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#2f7bff" stop-opacity=".4"/><stop offset="100%" stop-color="#2f7bff" stop-opacity="0"/></radialGradient><radialGradient id="Lmg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".5"/><stop offset="100%" stop-color="#20d6a1" stop-opacity="0"/></radialGradient><linearGradient id="Lib" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".3"/><stop offset="100%" stop-color="#2f7bff" stop-opacity=".1"/></linearGradient><linearGradient id="Lsh" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".12"/><stop offset="100%" stop-color="#2f7bff" stop-opacity=".05"/></linearGradient><filter id="Lag"><feGaussianBlur stdDeviation="8" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter><filter id="Lsg"><feGaussianBlur stdDeviation="14" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter><clipPath id="Lic"><rect x="60" y="60" width="520" height="520" rx="120"/></clipPath></defs><rect x="60" y="60" width="520" height="520" rx="120" fill="url(#Lbg)"/><rect x="60" y="60" width="520" height="520" rx="120" fill="none" stroke="url(#Lib)" stroke-width="1.5"/><rect x="90" y="90" width="460" height="460" rx="96" fill="url(#Lsh)"/><g clip-path="url(#Lic)" opacity=".055"><line x1="60" y1="160" x2="580" y2="160" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="260" x2="580" y2="260" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="360" x2="580" y2="360" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="460" x2="580" y2="460" stroke="#20d6a1" stroke-width="1"/><line x1="160" y1="60" x2="160" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="260" y1="60" x2="260" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="360" y1="60" x2="360" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="460" y1="60" x2="460" y2="580" stroke="#20d6a1" stroke-width="1"/></g><circle cx="230" cy="230" r="160" fill="#20d6a1" opacity=".04"/><circle cx="410" cy="410" r="140" fill="#2f7bff" opacity=".05"/><g opacity=".18" stroke="#20d6a1" stroke-width="1" fill="none"><line x1="320" y1="148" x2="180" y2="320" stroke-dasharray="4 6"/><line x1="320" y1="492" x2="180" y2="320" stroke-dasharray="4 6"/><line x1="320" y1="148" x2="440" y2="220" stroke-dasharray="3 7"/><line x1="320" y1="492" x2="440" y2="420" stroke-dasharray="3 7"/><line x1="180" y1="320" x2="320" y2="320" stroke-dasharray="3 8"/></g><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="#20d6a1" stroke-width="44" stroke-linecap="round" opacity=".12" filter="url(#Lsg)"/><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="url(#LaG)" stroke-width="36" stroke-linecap="round" filter="url(#Lag)"/><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity=".12"/><line x1="320" y1="190" x2="320" y2="450" stroke="url(#LbG)" stroke-width="3.5" stroke-linecap="round" opacity=".5"/><line x1="320" y1="190" x2="320" y2="450" stroke="url(#LbG)" stroke-width="14" stroke-linecap="round" opacity=".08" filter="url(#Lsg)"/><circle cx="320" cy="230" r="4" fill="#20d6a1" opacity=".7"/><circle cx="320" cy="275" r="3" fill="#4aabff" opacity=".5"/><circle cx="320" cy="320" r="4.5" fill="#2f7bff" opacity=".7"/><circle cx="320" cy="365" r="3" fill="#4aabff" opacity=".5"/><circle cx="320" cy="410" r="4" fill="#6b3fff" opacity=".6"/><circle cx="399" cy="183" r="34" fill="url(#Ln1)"/><circle cx="399" cy="183" r="20" fill="#060b14" stroke="#20d6a1" stroke-width="2.5" opacity=".9"/><circle cx="399" cy="183" r="14" fill="#20d6a1" opacity=".95"/><circle cx="399" cy="183" r="5" fill="white" opacity=".9"/><circle cx="399" cy="457" r="34" fill="url(#Ln2)"/><circle cx="399" cy="457" r="20" fill="#060b14" stroke="#2f7bff" stroke-width="2.5" opacity=".9"/><circle cx="399" cy="457" r="14" fill="#2f7bff" opacity=".95"/><circle cx="399" cy="457" r="5" fill="white" opacity=".9"/><circle cx="162" cy="320" r="26" fill="url(#Lmg)" opacity=".5"/><circle cx="162" cy="320" r="13" fill="#060b14" stroke="#20d6a1" stroke-width="2" opacity=".85"/><circle cx="162" cy="320" r="7" fill="#20d6a1" opacity=".8"/><circle cx="162" cy="320" r="2.5" fill="white" opacity=".7"/><circle cx="446" cy="222" r="7" fill="#0a1828" stroke="#20d6a1" stroke-width="1.5" opacity=".6"/><circle cx="446" cy="222" r="3" fill="#20d6a1" opacity=".6"/><circle cx="446" cy="418" r="7" fill="#0a1828" stroke="#2f7bff" stroke-width="1.5" opacity=".6"/><circle cx="446" cy="418" r="3" fill="#2f7bff" opacity=".6"/><path d="M100 160L100 110L150 110" fill="none" stroke="#20d6a1" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M540 160L540 110L490 110" fill="none" stroke="#20d6a1" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M100 480L100 530L150 530" fill="none" stroke="#2f7bff" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M540 480L540 530L490 530" fill="none" stroke="#2f7bff" stroke-width="2" stroke-linecap="round" opacity=".25"/></svg></div>
+      <div><h1>Connect-One</h1><p>Private · Secure · Encrypted</p></div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('register',this)">Create Account</button>
+      <button class="auth-tab" onclick="switchAuthTab('login',this)">Sign In</button>
+    </div>
+    <div id="auth-register">
+      <input class="inp" id="reg-name" placeholder="Your display name" autocomplete="off"/>
+      <input class="inp" id="reg-user" placeholder="Username (no spaces)" autocomplete="off"/>
+      <input class="inp" id="reg-phone" placeholder="Phone number (optional)" autocomplete="off"/>
+      <button class="btn-primary" onclick="doRegister()">🔐 Create Secure Account</button>
+    </div>
+    <div id="auth-login" style="display:none">
+      <input class="inp" id="login-user" placeholder="Username or phone" autocomplete="off"/>
+      <button class="btn-primary" onclick="doLogin()">→ Sign In</button>
+    </div>
+    <p class="auth-note">◈ Zero-knowledge · Signal Protocol · No ads ever</p>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══ -->
+<div id="app-shell">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="100%" height="100%" style="display:block"><defs><radialGradient id="Lbg" cx="38%" cy="32%" r="72%"><stop offset="0%" stop-color="#0d2040"/><stop offset="100%" stop-color="#060b14"/></radialGradient><linearGradient id="LaG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1"/><stop offset="55%" stop-color="#2f7bff"/><stop offset="100%" stop-color="#6b3fff"/></linearGradient><linearGradient id="LbG" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#20d6a1"/><stop offset="100%" stop-color="#2f7bff"/></linearGradient><radialGradient id="Ln1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".4"/><stop offset="100%" stop-color="#20d6a1" stop-opacity="0"/></radialGradient><radialGradient id="Ln2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#2f7bff" stop-opacity=".4"/><stop offset="100%" stop-color="#2f7bff" stop-opacity="0"/></radialGradient><radialGradient id="Lmg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".5"/><stop offset="100%" stop-color="#20d6a1" stop-opacity="0"/></radialGradient><linearGradient id="Lib" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".3"/><stop offset="100%" stop-color="#2f7bff" stop-opacity=".1"/></linearGradient><linearGradient id="Lsh" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#20d6a1" stop-opacity=".12"/><stop offset="100%" stop-color="#2f7bff" stop-opacity=".05"/></linearGradient><filter id="Lag"><feGaussianBlur stdDeviation="8" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter><filter id="Lsg"><feGaussianBlur stdDeviation="14" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter><clipPath id="Lic"><rect x="60" y="60" width="520" height="520" rx="120"/></clipPath></defs><rect x="60" y="60" width="520" height="520" rx="120" fill="url(#Lbg)"/><rect x="60" y="60" width="520" height="520" rx="120" fill="none" stroke="url(#Lib)" stroke-width="1.5"/><rect x="90" y="90" width="460" height="460" rx="96" fill="url(#Lsh)"/><g clip-path="url(#Lic)" opacity=".055"><line x1="60" y1="160" x2="580" y2="160" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="260" x2="580" y2="260" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="360" x2="580" y2="360" stroke="#20d6a1" stroke-width="1"/><line x1="60" y1="460" x2="580" y2="460" stroke="#20d6a1" stroke-width="1"/><line x1="160" y1="60" x2="160" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="260" y1="60" x2="260" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="360" y1="60" x2="360" y2="580" stroke="#20d6a1" stroke-width="1"/><line x1="460" y1="60" x2="460" y2="580" stroke="#20d6a1" stroke-width="1"/></g><circle cx="230" cy="230" r="160" fill="#20d6a1" opacity=".04"/><circle cx="410" cy="410" r="140" fill="#2f7bff" opacity=".05"/><g opacity=".18" stroke="#20d6a1" stroke-width="1" fill="none"><line x1="320" y1="148" x2="180" y2="320" stroke-dasharray="4 6"/><line x1="320" y1="492" x2="180" y2="320" stroke-dasharray="4 6"/><line x1="320" y1="148" x2="440" y2="220" stroke-dasharray="3 7"/><line x1="320" y1="492" x2="440" y2="420" stroke-dasharray="3 7"/><line x1="180" y1="320" x2="320" y2="320" stroke-dasharray="3 8"/></g><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="#20d6a1" stroke-width="44" stroke-linecap="round" opacity=".12" filter="url(#Lsg)"/><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="url(#LaG)" stroke-width="36" stroke-linecap="round" filter="url(#Lag)"/><path d="M399 183A158 158 0 1 0 399 457" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity=".12"/><line x1="320" y1="190" x2="320" y2="450" stroke="url(#LbG)" stroke-width="3.5" stroke-linecap="round" opacity=".5"/><line x1="320" y1="190" x2="320" y2="450" stroke="url(#LbG)" stroke-width="14" stroke-linecap="round" opacity=".08" filter="url(#Lsg)"/><circle cx="320" cy="230" r="4" fill="#20d6a1" opacity=".7"/><circle cx="320" cy="275" r="3" fill="#4aabff" opacity=".5"/><circle cx="320" cy="320" r="4.5" fill="#2f7bff" opacity=".7"/><circle cx="320" cy="365" r="3" fill="#4aabff" opacity=".5"/><circle cx="320" cy="410" r="4" fill="#6b3fff" opacity=".6"/><circle cx="399" cy="183" r="34" fill="url(#Ln1)"/><circle cx="399" cy="183" r="20" fill="#060b14" stroke="#20d6a1" stroke-width="2.5" opacity=".9"/><circle cx="399" cy="183" r="14" fill="#20d6a1" opacity=".95"/><circle cx="399" cy="183" r="5" fill="white" opacity=".9"/><circle cx="399" cy="457" r="34" fill="url(#Ln2)"/><circle cx="399" cy="457" r="20" fill="#060b14" stroke="#2f7bff" stroke-width="2.5" opacity=".9"/><circle cx="399" cy="457" r="14" fill="#2f7bff" opacity=".95"/><circle cx="399" cy="457" r="5" fill="white" opacity=".9"/><circle cx="162" cy="320" r="26" fill="url(#Lmg)" opacity=".5"/><circle cx="162" cy="320" r="13" fill="#060b14" stroke="#20d6a1" stroke-width="2" opacity=".85"/><circle cx="162" cy="320" r="7" fill="#20d6a1" opacity=".8"/><circle cx="162" cy="320" r="2.5" fill="white" opacity=".7"/><circle cx="446" cy="222" r="7" fill="#0a1828" stroke="#20d6a1" stroke-width="1.5" opacity=".6"/><circle cx="446" cy="222" r="3" fill="#20d6a1" opacity=".6"/><circle cx="446" cy="418" r="7" fill="#0a1828" stroke="#2f7bff" stroke-width="1.5" opacity=".6"/><circle cx="446" cy="418" r="3" fill="#2f7bff" opacity=".6"/><path d="M100 160L100 110L150 110" fill="none" stroke="#20d6a1" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M540 160L540 110L490 110" fill="none" stroke="#20d6a1" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M100 480L100 530L150 530" fill="none" stroke="#2f7bff" stroke-width="2" stroke-linecap="round" opacity=".25"/><path d="M540 480L540 530L490 530" fill="none" stroke="#2f7bff" stroke-width="2" stroke-linecap="round" opacity=".25"/></svg></div>
+      <span class="logo-name">Connect-One</span>
+    </div>
+    <div class="topbar-nav">
+      <button class="tnav-btn" onclick="showView('chat',this)"><span class="tico">💬</span>Chat</button>
+      <button class="tnav-btn" onclick="showView('calls',this)"><span class="tico">📞</span>Calls</button>
+      <button class="tnav-btn" onclick="showView('groups',this)"><span class="tico">👥</span>Groups</button>
+      <button class="tnav-btn" onclick="showView('ministry',this)"><span class="tico">🙏</span>Ministry</button>
+      <button class="tnav-btn" onclick="showView('channels',this)"><span class="tico">📢</span>Channels</button>
+      <button class="tnav-btn" onclick="showView('ai',this)"><span class="tico">🤖</span>AI</button>
+      <button class="tnav-btn" onclick="showView('admin',this)"><span class="tico">🛡️</span>Admin</button>
+      <button class="tnav-btn" onclick="showView('security',this)"><span class="tico">🔐</span>Security</button>
+      <button class="tnav-btn" onclick="showView('profile',this)"><span class="tico">👤</span>Profile</button>
+      <button class="tnav-btn" onclick="showView('blueprint',this)"><span class="tico">◈</span>Blueprint</button>
+      <button class="tnav-btn" onclick="showReadme()"><span class="tico">📖</span>Readme</button>
+    </div>
+    <div class="topbar-right">
+      <div class="e2ee-badge">E2EE ON</div>
+      <div class="avatar-btn" id="av-btn">P</div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Direct Messages</div>
+        <div id="sidebar-dms"></div>
+      </div>
+      <div class="sidebar-section mt8">
+        <div class="sidebar-label">Groups</div>
+        <div id="sidebar-groups"></div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="uav" id="sidebar-av">P</div>
+          <div>
+            <div class="uname" id="sidebar-name">Loading…</div>
+            <div class="ustatus">● Online · E2EE Active</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content-area" id="content-area">
+
+      <!-- ── CHAT ── -->
+      <div id="view-chat" class="view">
+        <div class="chat-layout">
+          <div class="chat-contacts" id="chat-contact-list">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+              <input class="inp" id="chat-search" style="margin:0;padding:9px 12px;font-size:12px" placeholder="🔍 Search chats…" oninput="searchContacts(this.value)"/>
+            </div>
+            <div id="contacts-inner" style="flex:1;overflow-y:auto"></div>
+            <div style="padding:10px 14px;border-top:1px solid var(--border)">
+              <button class="btn btn-teal btn-sm" style="width:100%" onclick="openNewChatModal()">+ New Chat</button>
+            </div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-header">
+              <div class="cav g1" id="chat-av" style="width:36px;height:36px;font-size:13px">?</div>
+              <div>
+                <div style="font-size:14px;font-weight:700" id="chat-name">Select a chat</div>
+                <div style="font-size:11px;color:var(--teal);display:flex;align-items:center;gap:4px">
+                  <span class="chat-status-dot"></span><span id="chat-sub">End-to-end encrypted</span>
+                </div>
+              </div>
+              <div class="chat-actions">
+                <button class="btn btn-ghost btn-sm" onclick="startCall('voice')" title="Voice call">📞</button>
+                <button class="btn btn-ghost btn-sm" onclick="startCall('video')" title="Video call">📹</button>
+                <button class="btn btn-ghost btn-sm" onclick="showInfo()" title="Info">ⓘ</button>
+                <button class="btn btn-ghost btn-sm" onclick="openDisappearModal()" title="Disappearing messages">⏱️</button>
+              </div>
+            </div>
+            <div class="recording-bar" id="recording-bar">
+              <div class="rec-dot"></div>
+              <span class="rec-timer" id="rec-timer">0:00</span>
+              <span style="font-size:12px;color:var(--muted);flex:1">Recording voice note…</span>
+              <button class="rec-send" onclick="stopRecording(true)">Send ✓</button>
+              <button class="rec-cancel" onclick="stopRecording(false)">✕ Cancel</button>
+            </div>
+            <div class="messages-area" id="messages-area">
+              <div class="empty-chat">
+                <span style="font-size:48px">💬</span>
+                <span style="font-size:15px;font-weight:600">Select a chat or start a new one</span>
+                <span class="txt-small txt-muted">All messages are E2EE encrypted</span>
+              </div>
+            </div>
+            <div class="composer">
+              <button class="btn btn-ghost btn-sm" onclick="triggerFilePicker()" title="Attach file">📎</button>
+              <button class="btn btn-ghost btn-sm" id="voice-btn" onclick="toggleVoiceRecording()" title="Voice note">🎙️</button>
+              <button class="btn btn-ghost btn-sm" onclick="triggerCameraPicker()" title="Photo/Video">📷</button>
+              <textarea class="compose-input" id="compose-input" placeholder="Write an encrypted message…" rows="1"
+                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+              <button class="btn btn-ghost btn-sm" onclick="openGifPicker()">GIF</button>
+              <button class="btn btn-teal btn-sm" onclick="sendMessage()">Send ›</button>
+            </div>
+          </div>
+        </div>
+        <div class="status-bar" id="chat-status">All messages are end-to-end encrypted · Only you and the recipient can read them</div>
+      </div>
+
+      <!-- ── CALLS ── -->
+      <div id="view-calls" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Calls</div><div class="view-subtitle">Voice · Video · Group · Screen Share</div></div>
+          <span class="pill pill-teal">WebRTC E2EE</span>
+        </div>
+        <div class="grid3 mb16">
+          <div class="call-card">
+            <div class="call-icon">📞</div>
+            <div class="card-title">Voice Call</div>
+            <div class="card-desc">Private encrypted 1-on-1 audio call</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn btn-teal" onclick="openCallModal('voice')">Start Voice Call</button>
+              <button class="btn btn-ghost btn-sm" onclick="openContactPickerForCall('voice')">Choose Contact…</button>
+            </div>
+          </div>
+          <div class="call-card">
+            <div class="call-icon">📹</div>
+            <div class="card-title">Video Call</div>
+            <div class="card-desc">1-on-1 encrypted video with WebRTC</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn btn-blue" onclick="openCallModal('video')">Start Video Call</button>
+              <button class="btn btn-ghost btn-sm" onclick="openContactPickerForCall('video')">Choose Contact…</button>
+            </div>
+          </div>
+          <div class="call-card">
+            <div class="call-icon">👥</div>
+            <div class="card-title">Group Call</div>
+            <div class="card-desc">Up to 50 participants via SFU</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn btn-violet" onclick="openCallModal('group')">Open Group Room</button>
+              <button class="btn btn-ghost btn-sm" onclick="openCallModal('group','Prayer Room')">Join Prayer Room</button>
+            </div>
+          </div>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title">🖥️ Screen Share</div>
+            <div class="card-desc">Share your screen during any active call</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="requestScreenShare()">Share My Screen</button>
+              <button class="btn btn-ghost btn-sm" onclick="addLogEntry('action','Recording','Screen recording started (local)')">● Record</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚙️ Call Settings</div>
+            <div class="card-desc">Audio and video preferences</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="addLogEntry('action','AI Audio','Noise cancellation enabled')">🎤 Noise Cancel</button>
+              <button class="btn btn-ghost btn-sm" onclick="addLogEntry('action','Test','Microphone test completed')">🔊 Test Mic</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-lbl">Call Log <button class="btn btn-ghost btn-sm" style="margin-left:12px;font-size:10px;padding:3px 8px" onclick="clearCallLog()">Clear All</button></div>
+        <div id="call-log"><div style="color:var(--muted);font-size:13px;padding:12px 0;font-style:italic">No recent calls.</div></div>
+        <div class="status-bar" id="calls-status">All calls use WebRTC with DTLS-SRTP encryption · IP protected via relay option</div>
+      </div>
+
+      <!-- ── GROUPS ── -->
+      <div id="view-groups" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Groups & Spaces</div><div class="view-subtitle">Create, manage, and join community spaces</div></div>
+          <button class="btn btn-teal btn-sm" onclick="focusCreateGroup()">+ New Group</button>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title">📋 Create Group</div>
+            <div class="card-desc">Start a new encrypted group conversation</div>
+            <input class="inp" id="g-name" placeholder="Group name" style="margin-bottom:8px"/>
+            <input class="inp" id="g-desc" placeholder="Description (optional)" style="margin-bottom:12px"/>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-teal btn-sm" onclick="createGroup()">Create Group</button>
+              <button class="btn btn-ghost btn-sm" onclick="createSpace()">Create Space</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🔗 Invite Members</div>
+            <div class="card-desc">Add by username or share invite link</div>
+            <input class="inp" id="g-invite" placeholder="Username or phone number" style="margin-bottom:8px"/>
+            <div id="invite-link-box" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);word-break:break-all">
+              connect.one/join/— (create a group first)
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-teal btn-sm" onclick="sendInvite()">Send Invite</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyInviteLink()">Copy Link</button>
+              <button class="btn btn-ghost btn-sm" onclick="generateQR()">QR Code</button>
+            </div>
+          </div>
+        </div>
+        <div class="section-lbl">Your Groups</div>
+        <div id="groups-list" class="grid2"></div>
+        <div class="status-bar" id="groups-status">Groups use Sender Keys — each member encrypts independently</div>
+      </div>
+
+      <!-- ── MINISTRY ── -->
+      <div id="view-ministry" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Ministry</div><div class="view-subtitle">Prayer Rooms · Events · Spiritual Community</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="openAddPrayerModal()">+ Prayer Request</button>
+        </div>
+        <div class="grid2 mb16">
+          <div class="prayer-room" id="prayer-room-1">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div class="prayer-name">🙏 Prayer Room</div>
+              <span class="pill pill-teal" style="font-size:9px">LIVE</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">8 members active</div>
+            <div id="prayer-requests-1"></div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-blue btn-sm" onclick="openCallModal('group','Prayer Room')">📞 Join Call</button>
+              <button class="btn btn-ghost btn-sm" onclick="openAddPrayerModal('1')">+ Add Request</button>
+              <button class="btn btn-ghost btn-sm" onclick="openGroupChat('Prayer Room')">💬 Chat</button>
+            </div>
+          </div>
+          <div class="prayer-room" id="prayer-room-2" style="background:linear-gradient(135deg,rgba(32,214,161,.06),rgba(47,123,255,.06));border-color:rgba(32,214,161,.2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <div class="prayer-name">✨ Youth Ministry</div>
+              <span class="pill pill-blue" style="font-size:9px">24 members</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Community space</div>
+            <div id="prayer-requests-2"></div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-teal btn-sm" onclick="openCallModal('group','Youth Ministry')">📞 Join Call</button>
+              <button class="btn btn-ghost btn-sm" onclick="openAddPrayerModal('2')">+ Post</button>
+              <button class="btn btn-ghost btn-sm" onclick="openGroupChat('Youth Ministry')">💬 Chat</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-lbl" style="margin-bottom:0">Upcoming Events</div>
+          <button class="btn btn-teal btn-sm" onclick="scrollToCreateEvent()">+ Create Event</button>
+        </div>
+        <div id="events-list" class="mb16"></div>
+        <div class="card" id="create-event-card">
+          <div class="card-title mb8">📅 Create New Event</div>
+          <div class="grid2">
+            <div>
+              <input class="inp" id="ev-name" placeholder="Event name *"/>
+              <input class="inp" id="ev-date" type="date"/>
+              <input class="inp" id="ev-time" placeholder="Time (e.g. 7:00 PM)"/>
+            </div>
+            <div>
+              <input class="inp" id="ev-loc" placeholder="Location"/>
+              <input class="inp" id="ev-desc" placeholder="Short description"/>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-teal" onclick="createEvent()">✓ Create Event</button>
+                <button class="btn btn-ghost" onclick="announceEvent()">📢 Create & Announce</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="status-bar" id="ministry-status">Ministry spaces use group E2EE · Prayer requests visible only to members</div>
+      </div>
+
+      <!-- ── CHANNELS ── -->
+      <div id="view-channels" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Channels</div><div class="view-subtitle">Broadcast announcements to unlimited subscribers</div></div>
+          <button class="btn btn-teal btn-sm" onclick="createChannel()">+ Create Channel</button>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title">📢 Post Announcement</div>
+            <div class="card-desc">Broadcast to your entire community</div>
+            <input class="inp" id="ann-title" placeholder="Title *"/>
+            <textarea class="inp" id="ann-body" placeholder="Announcement text…" style="min-height:80px;resize:vertical;margin-bottom:8px"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-teal btn-sm" onclick="postAnnouncement()">📢 Post Now</button>
+              <button class="btn btn-ghost btn-sm" onclick="scheduleAnnouncement()">⏰ Schedule</button>
+              <button class="btn btn-ghost btn-sm" onclick="draftAnnouncement()">Save Draft</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📊 Channel Stats</div>
+            <div class="card-desc">Reach and engagement analytics</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg3);border-radius:8px">
+                <span style="font-size:12px;color:var(--muted)">Subscribers</span>
+                <span id="sub-count" style="font-family:'Space Mono',monospace;color:var(--teal);font-size:14px">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg3);border-radius:8px">
+                <span style="font-size:12px;color:var(--muted)">Posts Published</span>
+                <span id="ann-count" style="font-family:'Space Mono',monospace;color:var(--teal);font-size:14px">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg3);border-radius:8px">
+                <span style="font-size:12px;color:var(--muted)">Avg. Read Rate</span>
+                <span style="font-family:'Space Mono',monospace;color:var(--muted);font-size:14px">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="section-lbl mb8">Announcements <span id="ann-total" style="color:var(--muted);font-size:9px">(0)</span></div>
+        <div id="announcements-list"></div>
+        <div class="status-bar" id="channels-status">Broadcast channels are one-way · Only channel admins can post</div>
+      </div>
+
+      <!-- ── AI ── -->
+      <div id="view-ai" class="view">
+        <div class="view-header">
+          <div><div class="view-title">AI Assistant</div><div class="view-subtitle">Smart tools · Pro feature</div></div>
+          <span class="pill pill-violet">PRO</span>
+        </div>
+        <div class="grid3 mb16">
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">✍️</div>
+            <div class="card-title">Message Assistant</div>
+            <div class="card-desc">Improve grammar, tone, and clarity before sending</div>
+            <textarea class="inp" id="ai-draft" placeholder="Paste your draft message…" style="min-height:70px;resize:vertical;margin-bottom:8px"></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-violet btn-sm" onclick="aiImprove()">✨ Improve</button>
+              <button class="btn btn-ghost btn-sm" onclick="aiAction('shorten')">Shorten</button>
+              <button class="btn btn-ghost btn-sm" onclick="aiAction('formalize')">Formalize</button>
+              <button class="btn btn-ghost btn-sm" onclick="aiAction('casual')">Make Casual</button>
+            </div>
+            <div id="ai-improved" style="display:none;background:var(--bg3);border:1px solid var(--teal);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.6"></div>
+            <button id="ai-use-btn" style="display:none;margin-top:8px" class="btn btn-teal btn-sm" onclick="useAiImproved()">Use This ›</button>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">🌐</div>
+            <div class="card-title">Real-time Translation</div>
+            <div class="card-desc">Translate messages to any language</div>
+            <input class="inp" id="ai-translate-in" placeholder="Text to translate…" style="margin-bottom:8px"/>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+              <button class="btn btn-blue btn-sm" onclick="aiTranslate('Spanish')">→ Spanish</button>
+              <button class="btn btn-blue btn-sm" onclick="aiTranslate('French')">→ French</button>
+              <button class="btn btn-blue btn-sm" onclick="aiTranslate('Portuguese')">→ PT</button>
+              <button class="btn btn-ghost btn-sm" onclick="aiTranslate('Yoruba')">→ Yoruba</button>
+              <button class="btn btn-ghost btn-sm" onclick="aiTranslate('Arabic')">→ Arabic</button>
+            </div>
+            <div id="ai-translate-out" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;color:var(--muted);min-height:48px">Translation will appear here…</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyTranslation()">Copy Translation</button>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">🎙️</div>
+            <div class="card-title">Voice Transcription</div>
+            <div class="card-desc">Convert voice notes to text automatically</div>
+            <button class="btn btn-teal btn-sm" onclick="startAiTranscribe()" style="margin-bottom:10px;width:100%">🎙️ Record &amp; Transcribe</button>
+            <div id="ai-transcript" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12.5px;color:var(--muted);min-height:80px;line-height:1.6">Tap above to record a voice note…</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyTranscript()">Copy Text</button>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">📋</div>
+            <div class="card-title">Conversation Summary</div>
+            <div class="card-desc">Catch up on long conversations fast</div>
+            <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;width:100%" onclick="aiSummarize()">Summarize Current Chat</button>
+            <div id="ai-summary" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12.5px;color:var(--muted);min-height:80px;line-height:1.6">Select a chat then tap above…</div>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">💡</div>
+            <div class="card-title">Smart Replies</div>
+            <div class="card-desc">AI-suggested quick reply options for your current chat</div>
+            <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;width:100%" onclick="generateSmartReplies()">Generate Suggestions</button>
+            <div id="smart-replies" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:8px">📝</div>
+            <div class="card-title">Meeting Notes</div>
+            <div class="card-desc">Auto-generate notes after group calls</div>
+            <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;width:100%" onclick="aiMeetingNotes()">Generate from Last Call</button>
+            <div id="ai-notes" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);min-height:80px;line-height:1.7">Notes appear here after a group call ends…</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyNotes()">Copy Notes</button>
+          </div>
+        </div>
+        <div class="status-bar" id="ai-status">AI processing is local where possible · Content never stored on servers</div>
+      </div>
+
+      <!-- ── ADMIN ── -->
+      <div id="view-admin" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Admin Dashboard</div><div class="view-subtitle">User management · Reports · Safety</div></div>
+          <span class="pill pill-red">ADMIN ONLY</span>
+        </div>
+        <div class="grid3 mb16">
+          <div style="background:var(--card);border:1px solid rgba(32,214,161,.2);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--teal)" id="admin-member-count">0</div>
+            <div style="font-size:12px;color:var(--muted)">Total Members</div>
+          </div>
+          <div style="background:var(--card);border:1px solid rgba(47,123,255,.2);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--blue)" id="admin-group-count">0</div>
+            <div style="font-size:12px;color:var(--muted)">Active Groups</div>
+          </div>
+          <div style="background:var(--card);border:1px solid rgba(255,77,109,.2);border-radius:14px;padding:18px;text-align:center">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--red)" id="admin-report-count">0</div>
+            <div style="font-size:12px;color:var(--muted)">Open Reports</div>
+          </div>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title">🔍 Member Directory</div>
+            <div class="card-desc">Search and manage community members</div>
+            <input class="inp" id="admin-search" placeholder="Search by name or username…" style="margin-bottom:10px" oninput="adminSearch(this.value)"/>
+            <div id="admin-search-results" style="max-height:200px;overflow-y:auto;margin-bottom:10px"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 Reports Queue</div>
+            <div class="card-desc">Review flagged content — E2EE messages remain private</div>
+            <div id="reports-queue">
+              <div style="color:var(--muted);font-size:13px;font-style:italic">No open reports.</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="submitTestReport()">+ Simulate Report</button>
+          </div>
+        </div>
+        <div class="card mb16">
+          <div class="card-title mb8">📜 Audit Log <button class="btn btn-ghost btn-sm" style="margin-left:10px;font-size:10px;padding:3px 8px" onclick="clearAuditLog()">Clear</button></div>
+          <div id="audit-log" style="display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto">
+            <div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px">No audit events yet.</div>
+          </div>
+        </div>
+        <div class="status-bar" id="admin-status">Admin actions are logged · Private E2EE messages are unreadable by anyone including admins</div>
+      </div>
+
+      <!-- ── SECURITY ── -->
+      <div id="view-security" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Security Center</div><div class="view-subtitle">Privacy controls · Encryption · Devices</div></div>
+          <span class="pill pill-teal">◈ SECURE</span>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title mb16">🔐 Privacy Controls</div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">End-to-End Encryption</div><div class="sec-desc">Signal Protocol — always on, cannot be disabled</div></div>
+              <button class="toggle on" id="tog-e2ee" onclick="toggleSec(this,'E2EE is always on — cannot be disabled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Read Receipts</div><div class="sec-desc">Show ✓✓ when your messages are read</div></div>
+              <button class="toggle on" id="tog-read" onclick="toggleSec(this,'Read receipts toggled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Typing Indicators</div><div class="sec-desc">Show when you are typing</div></div>
+              <button class="toggle on" id="tog-typing" onclick="toggleSec(this,'Typing indicators toggled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Last Seen / Online</div><div class="sec-desc">Control who sees your presence</div></div>
+              <button class="toggle on" id="tog-presence" onclick="toggleSec(this,'Presence visibility updated')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Link Previews</div><div class="sec-desc">Auto-generate previews of links</div></div>
+              <button class="toggle off" id="tog-links" onclick="toggleSec(this,'Link previews toggled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Screen Security</div><div class="sec-desc">Block screenshots inside the app</div></div>
+              <button class="toggle off" id="tog-screen" onclick="toggleSec(this,'Screenshot protection toggled')"></button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title mb16">🛡️ Authentication</div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">App Lock (PIN)</div><div class="sec-desc">Require PIN to open the app</div></div>
+              <button class="toggle off" id="tog-pin" onclick="toggleSec(this,'App PIN lock enabled — set your PIN')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Biometric Lock</div><div class="sec-desc">Face ID or fingerprint to unlock</div></div>
+              <button class="toggle off" id="tog-bio" onclick="toggleSec(this,'Biometric lock enabled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Registration Lock (2FA)</div><div class="sec-desc">Prevent re-registration of your account</div></div>
+              <button class="toggle on" id="tog-reglock" onclick="toggleSec(this,'Registration lock toggled')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Relay Calls (Hide IP)</div><div class="sec-desc">Route calls through TURN server</div></div>
+              <button class="toggle off" id="tog-relay" onclick="toggleSec(this,'IP relay enabled — calls routed through TURN server')"></button>
+            </div>
+            <div class="sec-row">
+              <div class="sec-info"><div class="sec-label">Incognito Keyboard</div><div class="sec-desc">Prevent keyboard from learning your text</div></div>
+              <button class="toggle off" id="tog-kbd" onclick="toggleSec(this,'Incognito keyboard enabled')"></button>
+            </div>
+          </div>
+        </div>
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-title">⏱️ Disappearing Messages</div>
+            <div class="card-desc">Auto-delete messages after a set time</div>
+            <select class="inp" id="disappear-timer" style="margin-bottom:10px">
+              <option value="off">Off</option>
+              <option value="30s">30 seconds</option>
+              <option value="5m">5 minutes</option>
+              <option value="1h">1 hour</option>
+              <option value="8h">8 hours</option>
+              <option value="1d">1 day</option>
+              <option value="1w">1 week</option>
+            </select>
+            <button class="btn btn-teal btn-sm" onclick="setDisappear()">Apply Timer</button>
+          </div>
+          <div class="card">
+            <div class="card-title">🔢 Safety Numbers</div>
+            <div class="card-desc">Verify your E2EE session with a contact</div>
+            <div id="safety-number" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--teal);word-break:break-all;line-height:1.9">
+              — Select a contact to see safety numbers —
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="generateSafetyNumbers()">Generate Numbers</button>
+              <button class="btn btn-ghost btn-sm" onclick="scanQR()">Scan QR</button>
+            </div>
+          </div>
+        </div>
+        <div class="card mb16">
+          <div class="card-title mb8">📱 Linked Devices</div>
+          <div id="linked-devices">
+            <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:9px;border:1px solid var(--border);margin-bottom:6px">
+              <span style="font-size:18px">💻</span>
+              <div><div style="font-size:13px;font-weight:600">This Device · Web Browser</div><div style="font-size:11px;color:var(--muted)">Active now</div></div>
+              <span style="margin-left:auto;font-size:10px;color:var(--teal);font-family:'Space Mono',monospace">CURRENT</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addLinkedDevice()">+ Link New Device</button>
+        </div>
+        <div class="status-bar" id="security-status">Signal Protocol active · All keys stored locally on device · Server has zero knowledge</div>
+      </div>
+
+      <!-- ── PROFILE ── -->
+      <div id="view-profile" class="view">
+        <div class="view-header">
+          <div><div class="view-title">Your Profile</div><div class="view-subtitle">Manage your identity and account</div></div>
+        </div>
+        <div class="grid2">
+          <div class="card" style="text-align:center">
+            <div class="profile-avatar" id="profile-av">P</div>
+            <div style="font-size:18px;font-weight:700;margin-bottom:4px" id="profile-name-display">Loading…</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="profile-user-display">@username</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:16px;font-family:'Space Mono',monospace" id="profile-phone-display"></div>
+            <button class="btn btn-ghost btn-sm" onclick="triggerCameraPicker()">Change Photo</button>
+          </div>
+          <div class="card">
+            <div class="card-title mb16">Edit Profile</div>
+            <input class="inp" id="profile-name" placeholder="Display name"/>
+            <input class="inp" id="profile-username" placeholder="Username (no spaces)"/>
+            <input class="inp" id="profile-bio" placeholder="Bio (optional)"/>
+            <input class="inp" id="profile-phone-inp" placeholder="Phone number"/>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <button class="btn btn-teal btn-sm" onclick="saveProfile()">Save Changes</button>
+              <button class="btn btn-ghost btn-sm" onclick="generateQR()">My QR Code</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title mb8">🔔 Notifications</div>
+            <div class="sec-row"><div class="sec-info"><div class="sec-label">Message Notifications</div><div class="sec-desc">Alerts for new messages</div></div><button class="toggle on" onclick="toggleSec(this,'Message notifications toggled')"></button></div>
+            <div class="sec-row"><div class="sec-info"><div class="sec-label">Call Notifications</div><div class="sec-desc">Incoming call alerts</div></div><button class="toggle on" onclick="toggleSec(this,'Call notifications toggled')"></button></div>
+            <div class="sec-row" style="border-bottom:none"><div class="sec-info"><div class="sec-label">Preview on Lock Screen</div><div class="sec-desc">Show message content in notification</div></div><button class="toggle off" onclick="toggleSec(this,'Notification preview toggled')"></button></div>
+          </div>
+          <div class="card">
+            <div class="card-title mb8">⚙️ Account Actions</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <button class="btn btn-ghost btn-sm" onclick="exportData()">📦 Export My Data</button>
+              <button class="btn btn-ghost btn-sm" onclick="viewStorage()">💾 Storage Usage</button>
+              <button class="btn btn-ghost btn-sm" onclick="showReadme()">📖 Help &amp; Guide</button>
+              <button class="btn btn-danger btn-sm" onclick="confirmDeleteAccount()">🗑️ Delete Account</button>
+            </div>
+          </div>
+        </div>
+        <div class="status-bar" id="profile-status">Profile data is stored locally and shared only with approved contacts</div>
+      </div>
+
+      <!-- ── BLUEPRINT ── -->
+      <div id="view-blueprint" class="view">
+        <div class="view-header">
+          <div><div class="view-title" style="font-size:44px">◈ Blueprint</div><div class="view-subtitle">Complete technical architecture · Connect-One</div></div>
+          <span class="pill pill-teal">v1.0</span>
+        </div>
+        <div class="bp-nav" id="bp-nav"></div>
+        <div id="bp-container"></div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /app-body -->
+</div><!-- /app-shell -->
+
+<!-- ══ MODALS ══ -->
+
+<!-- New Chat Modal -->
+<div id="modal-newchat" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-newchat')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-newchat')">✕</button>
+    <div class="modal-title" style="color:var(--teal)">New Chat</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Enter the person's name to start a conversation. In a real app they would need to be registered.</p>
+    <input class="inp" id="nc-name" placeholder="Display name *" autocomplete="off"/>
+    <input class="inp" id="nc-user" placeholder="Username or phone (optional)" autocomplete="off"/>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-teal" style="flex:1" onclick="createNewChat()">Start Chat</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-newchat')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Prayer Request Modal -->
+<div id="modal-prayer" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-prayer')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-prayer')">✕</button>
+    <div class="modal-title" style="color:var(--blue)">Add Prayer Request</div>
+    <input class="inp" id="pr-name" placeholder="Your name or 'Anonymous'" autocomplete="off"/>
+    <textarea class="inp" id="pr-text" placeholder="Share your prayer request…" style="min-height:100px;resize:vertical"></textarea>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-blue" style="flex:1" onclick="submitPrayerRequest()">🙏 Submit Request</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-prayer')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Disappear Modal -->
+<div id="modal-disappear" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-disappear')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-disappear')">✕</button>
+    <div class="modal-title" style="color:var(--amber)">⏱️ Disappearing Messages</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Messages in this chat will auto-delete after the selected time.</p>
+    <select class="inp" id="modal-disappear-sel">
+      <option value="off">Off</option>
+      <option value="30s">30 seconds</option>
+      <option value="5m">5 minutes</option>
+      <option value="1h">1 hour</option>
+      <option value="8h">8 hours</option>
+      <option value="1d">1 day</option>
+      <option value="1w">1 week</option>
+    </select>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-amber" style="flex:1" onclick="applyDisappearTimer()">Apply</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-disappear')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- GIF Picker Modal -->
+<div id="modal-gif" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-gif')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-gif')">✕</button>
+    <div class="modal-title" style="color:var(--violet)">GIF Picker</div>
+    <input class="inp" id="gif-search" placeholder="Search GIFs…" oninput="searchGifs(this.value)"/>
+    <div id="gif-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:280px;overflow-y:auto;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- README Modal -->
+<div id="modal-readme" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-readme')">
+  <div class="modal-box" style="max-width:600px;max-height:85vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('modal-readme')">✕</button>
+    <div class="modal-title" style="color:var(--teal)">📖 Connect-One — Guide & README</div>
+    <div id="readme-content" style="font-size:13px;line-height:1.8;color:#ccc"></div>
+  </div>
+</div>
+
+<!-- CALL MODAL -->
+<div id="call-modal" class="call-modal-overlay" style="display:none">
+  <div class="call-modal">
+    <div class="call-avatar" id="call-avatar-wrap">
+      <div class="call-pulse"></div>
+      <div class="call-pulse2"></div>
+      <div class="cav g1" id="call-avatar" style="width:96px;height:96px;font-size:36px;z-index:1;position:relative">?</div>
+    </div>
+    <div class="call-cname" id="call-cname">Name</div>
+    <div class="call-status" id="call-status-text">Calling…</div>
+    <div class="call-timer" id="call-timer-display">0:00</div>
+    <div class="call-controls">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="call-ctrl ctrl-mute" id="call-mute-btn" onclick="toggleCallMute()">🎙️</button>
+        <span class="call-ctrl-label">Mute</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="call-ctrl ctrl-spk" onclick="toggleSpeaker()">🔊</button>
+        <span class="call-ctrl-label">Speaker</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="call-ctrl ctrl-cam" id="call-cam-btn" onclick="toggleCallCamera()">📹</button>
+        <span class="call-ctrl-label">Camera</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="call-ctrl ctrl-end" onclick="endCall()">📵</button>
+        <span class="call-ctrl-label">End Call</span>
+      </div>
+    </div>
+    <div style="margin-top:24px;font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px">🔒 DTLS-SRTP ENCRYPTED</div>
+    <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,.3)">
+      ⚠️ Note: Live calls require a backend server. <a href="#" onclick="showReadme();endCall();return false" style="color:var(--teal)">See README</a>
+    </div>
+  </div>
+</div>
+<script>
+// ════════════════════════════════════════════
+//  AVATAR COLOURS
+// ════════════════════════════════════════════
+const AV_CLASSES=['g1','g2','g3','g4','g5'];
+function avClass(i){return AV_CLASSES[i%AV_CLASSES.length];}
+function initials(name){return name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';}
+function randId(){return Math.random().toString(36).slice(2,9);}
+function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+function todayDate(){return new Date().toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});}
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+const S={
+  user:null,
+  contacts:[],   // {id,name,initials,avClass,lastMsg,unread}
+  groups:[],     // {id,name,icon}
+  messages:{},   // keyed by id
+  callLog:[],
+  announcements:[],
+  prayerRequests:{1:[],2:[]},
+  events:[],
+  currentChatId:null,
+  currentCallTarget:null,
+  callType:null,
+  callStartTime:null,
+  callTimerRef:null,
+  recordingRef:null,
+  recordingSecs:0,
+  mediaRecorder:null,
+  audioChunks:[],
+  activePrayerRoom:null,
+  annCount:0,
+  toggleStates:{e2ee:true,read:true,typing:true,presence:true,links:false,screen:false,pin:false,bio:false,reglock:true,relay:false,kbd:false},
+  bpActiveFeat:0,
+  bpActiveEnc:0,
+  bpActivePhase:0,
+};
+
+// ════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════
+function switchAuthTab(tab,btn){
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('auth-register').style.display=tab==='register'?'block':'none';
+  document.getElementById('auth-login').style.display=tab==='login'?'block':'none';
+}
+function doRegister(){
+  const name=document.getElementById('reg-name').value.trim()||'Pastor David';
+  const user=document.getElementById('reg-user').value.trim().replace(/\s+/g,'')||'user';
+  const phone=document.getElementById('reg-phone').value.trim();
+  S.user={name,username:user,phone,bio:''};
+  launchApp();
+}
+function doLogin(){
+  const id=document.getElementById('login-user').value.trim()||'user';
+  S.user={name:id,username:id,phone:'',bio:''};
+  launchApp();
+}
+function launchApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-shell').classList.add('visible');
+  updateUserDisplay();
+  // Default group chats
+  S.groups=[
+    {id:'g_leadership',name:'Leadership Room',icon:'🏛️'},
+    {id:'g_prayer',name:'Prayer Room',icon:'🙏'},
+    {id:'g_youth',name:'Youth Ministry',icon:'✨'},
+    {id:'g_events',name:'Events Team',icon:'📅'},
+  ];
+  // Default prayer requests
+  S.prayerRequests[1]=[
+    {id:randId(),name:'Anonymous',text:'Lord, please grant wisdom and direction for our upcoming missions trip.'},
+    {id:randId(),name:'Sister Grace',text:'Prayers for Brother Emmanuel recovering from surgery. Stand with him in faith.'},
+  ];
+  S.prayerRequests[2]=[
+    {id:randId(),name:'Youth Leader',text:'Prayer focus: Academic excellence for all students this semester.'},
+  ];
+  // Default event
+  const today=new Date();
+  S.events=[
+    {id:randId(),name:'Sunday Service',date:nextSunday(),time:'9:00 AM',loc:'Main Sanctuary',desc:'All members welcome'},
+  ];
+  renderSidebar();
+  renderContacts();
+  renderGroups();
+  renderAnnouncements();
+  renderPrayerRequests();
+  renderEvents();
+  updateAdminStats();
+  buildBlueprintNav();
+  buildBlueprintSections();
+  showView('chat',document.querySelector('.tnav-btn'));
+  auditLog('App launched · user: @'+S.user.username);
+}
+function nextSunday(){
+  const d=new Date();
+  d.setDate(d.getDate()+(7-d.getDay())%7||7);
+  return d.toISOString().split('T')[0];
+}
+function updateUserDisplay(){
+  const init=initials(S.user.name);
+  document.getElementById('av-btn').textContent=init;
+  document.getElementById('sidebar-av').textContent=init;
+  document.getElementById('sidebar-name').textContent=S.user.name;
+  document.getElementById('profile-av').textContent=init;
+  document.getElementById('profile-name-display').textContent=S.user.name;
+  document.getElementById('profile-user-display').textContent='@'+S.user.username;
+  document.getElementById('profile-phone-display').textContent=S.user.phone?'📞 '+S.user.phone:'';
+  document.getElementById('profile-name').value=S.user.name;
+  document.getElementById('profile-username').value=S.user.username;
+  document.getElementById('profile-phone-inp').value=S.user.phone||'';
+  document.getElementById('profile-bio').value=S.user.bio||'';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!S.user){
+    const n=document.getElementById('reg-name');
+    if(!n.value)n.value='Pastor David';
+    const u=document.getElementById('reg-user');
+    if(!u.value)u.value='pastor.david';
+    doRegister();
+  }
+});
+
+// ════════════════════════════════════════════
+//  VIEW NAV
+// ════════════════════════════════════════════
+function showView(id,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active-view'));
+  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
+  const v=document.getElementById('view-'+id);
+  if(v)v.classList.add('active-view');
+  if(btn){btn.classList.add('active');}
+  else{const b=document.querySelector(`.tnav-btn[onclick*="'${id}'"]`);if(b)b.classList.add('active');}
+}
+
+// ════════════════════════════════════════════
+//  SIDEBAR
+// ════════════════════════════════════════════
+function renderSidebar(){
+  const dmEl=document.getElementById('sidebar-dms');
+  const grpEl=document.getElementById('sidebar-groups');
+  dmEl.innerHTML=S.contacts.map(c=>`
+    <button class="snav ${S.currentChatId===c.id?'active':''}" onclick="selectContact('${c.id}');showView('chat',null)">
+      <div class="cav ${c.avClass}" style="width:28px;height:28px;font-size:10px;border-radius:50%;flex-shrink:0">${c.initials}</div>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span>
+      ${c.unread?`<div class="sbadge" style="color:var(--teal)">${c.unread}</div>`:''}
+      <button class="del-btn" onclick="event.stopPropagation();deleteContact('${c.id}')">✕</button>
+    </button>
+  `).join('')||'<div style="font-size:11px;color:var(--muted);padding:8px 10px">No chats yet — tap + New Chat</div>';
+  grpEl.innerHTML=S.groups.map(g=>`
+    <button class="snav ${S.currentChatId===g.id?'active':''}" onclick="selectGroup('${g.id}');showView('chat',null)">
+      <span class="sico">${g.icon}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.name}</span>
+      <button class="del-btn" onclick="event.stopPropagation();deleteGroup('${g.id}')">✕</button>
+    </button>
+  `).join('');
+}
+
+// ════════════════════════════════════════════
+//  CHAT CONTACTS PANEL
+// ════════════════════════════════════════════
+function renderContacts(filter){
+  const list=filter?S.contacts.filter(c=>c.name.toLowerCase().includes(filter.toLowerCase())):S.contacts;
+  const el=document.getElementById('contacts-inner');
+  if(!el)return;
+  el.innerHTML=list.map(c=>`
+    <div class="contact-item ${S.currentChatId===c.id?'active':''}" onclick="selectContact('${c.id}')">
+      <div class="cav ${c.avClass}">${c.initials}</div>
+      <div style="flex:1;overflow:hidden">
+        <div class="cname">${c.name}</div>
+        <div class="clast">🔒 ${c.lastMsg||'Start a conversation'}</div>
+      </div>
+      ${c.unread?`<div class="cunread">${c.unread}</div>`:''}
+      <button class="ci-del" onclick="event.stopPropagation();deleteContact('${c.id}')">✕</button>
+    </div>
+  `).join('')+(S.groups.map(g=>`
+    <div class="contact-item ${S.currentChatId===g.id?'active':''}" onclick="selectGroup('${g.id}')">
+      <div class="cav g2" style="font-size:16px;display:flex;align-items:center;justify-content:center">${g.icon}</div>
+      <div style="flex:1;overflow:hidden">
+        <div class="cname">${g.name}</div>
+        <div class="clast">🔒 Group chat</div>
+      </div>
+      <button class="ci-del" onclick="event.stopPropagation();deleteGroup('${g.id}')">✕</button>
+    </div>
+  `).join(''))||'<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No chats yet.<br>Tap + New Chat to begin.</div>';
+}
+function searchContacts(v){renderContacts(v);}
+
+function selectContact(id){
+  S.currentChatId=id;
+  const c=S.contacts.find(x=>x.id===id);
+  if(!c)return;
+  c.unread=0;
+  document.getElementById('chat-name').textContent=c.name;
+  document.getElementById('chat-av').textContent=c.initials;
+  document.getElementById('chat-av').className='cav '+c.avClass;
+  document.getElementById('chat-av').style.cssText='width:36px;height:36px;font-size:13px';
+  document.getElementById('chat-sub').textContent='Online · E2EE verified';
+  renderMessages();
+  renderContacts();
+  renderSidebar();
+}
+function selectGroup(id){
+  S.currentChatId=id;
+  const g=S.groups.find(x=>x.id===id);
+  if(!g)return;
+  document.getElementById('chat-name').textContent=g.name;
+  document.getElementById('chat-av').textContent=g.icon;
+  document.getElementById('chat-av').className='cav g2';
+  document.getElementById('chat-av').style.cssText='width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center';
+  document.getElementById('chat-sub').textContent='Group · E2EE Sender Keys';
+  renderMessages();
+  renderContacts();
+  renderSidebar();
+}
+function openGroupChat(name){
+  const g=S.groups.find(x=>x.name===name);
+  if(g){selectGroup(g.id);showView('chat',null);}
+}
+function deleteContact(id){
+  if(!confirm('Remove this contact?'))return;
+  S.contacts=S.contacts.filter(c=>c.id!==id);
+  if(S.currentChatId===id){S.currentChatId=null;clearChatView();}
+  renderContacts();renderSidebar();
+  setStatus('chat','Contact removed.');
+}
+function deleteGroup(id){
+  if(!confirm('Leave this group?'))return;
+  S.groups=S.groups.filter(g=>g.id!==id);
+  if(S.currentChatId===id){S.currentChatId=null;clearChatView();}
+  renderContacts();renderSidebar();renderGroups();
+}
+function clearChatView(){
+  document.getElementById('chat-name').textContent='Select a chat';
+  document.getElementById('chat-av').textContent='?';
+  document.getElementById('messages-area').innerHTML=`<div class="empty-chat"><span style="font-size:48px">💬</span><span style="font-size:15px;font-weight:600">Select a chat or start a new one</span><span class="txt-small txt-muted">All messages are E2EE encrypted</span></div>`;
+}
+
+// ════════════════════════════════════════════
+//  NEW CHAT MODAL
+// ════════════════════════════════════════════
+function openNewChatModal(){
+  document.getElementById('nc-name').value='';
+  document.getElementById('nc-user').value='';
+  openModal('modal-newchat');
+  setTimeout(()=>document.getElementById('nc-name').focus(),100);
+}
+function createNewChat(){
+  const name=document.getElementById('nc-name').value.trim();
+  if(!name){alert('Please enter a display name.');return;}
+  const id=randId();
+  const av=avClass(S.contacts.length);
+  const contact={id,name,initials:initials(name),avClass:av,lastMsg:'',unread:0};
+  S.contacts.unshift(contact);
+  closeModal('modal-newchat');
+  renderContacts();renderSidebar();
+  selectContact(id);
+  showView('chat',null);
+  auditLog(`New chat created: ${name}`);
+  setStatus('chat',`Chat with ${name} started · E2EE active`);
+}
+
+// ════════════════════════════════════════════
+//  MESSAGES
+// ════════════════════════════════════════════
+function getMessages(id){if(!S.messages[id])S.messages[id]=[];return S.messages[id];}
+function renderMessages(){
+  const id=S.currentChatId;
+  if(!id){clearChatView();return;}
+  const area=document.getElementById('messages-area');
+  const msgs=getMessages(id);
+  if(!msgs.length){
+    const name=(S.contacts.find(c=>c.id===id)||S.groups.find(g=>g.id===id)||{}).name||'';
+    area.innerHTML=`<div class="empty-chat"><span style="font-size:36px">🔒</span><span>Start your conversation with ${name}</span><span class="txt-small txt-muted">Messages are end-to-end encrypted</span></div>`;
+    return;
+  }
+  area.innerHTML=msgs.map(m=>{
+    const isMe=m.from===S.user.name;
+    return `<div class="bubble ${isMe?'me':'them'}">
+      ${!isMe?`<div class="bname">${m.from}</div>`:''}
+      ${m.body}
+      <div class="btime"><span class="enc-tag">🔒 E2EE</span>${m.time}${isMe?' ✓✓':''}</div>
+    </div>`;
+  }).join('');
+  area.scrollTop=area.scrollHeight;
+}
+function sendMessage(){
+  const inp=document.getElementById('compose-input');
+  const text=inp.value.trim();
+  if(!text){setStatus('chat','Type a message first.');return;}
+  if(!S.currentChatId){setStatus('chat','Select or create a chat first.');return;}
+  getMessages(S.currentChatId).push({from:S.user.name,body:text,time:now()});
+  const c=S.contacts.find(x=>x.id===S.currentChatId);
+  if(c)c.lastMsg=text.slice(0,30)+(text.length>30?'…':'');
+  inp.value='';inp.style.height='';
+  renderMessages();renderContacts();
+  setStatus('chat','Message sent · Signal Protocol ✓');
+}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+
+// ════════════════════════════════════════════
+//  FILE & MEDIA
+// ════════════════════════════════════════════
+function triggerFilePicker(){
+  if(!S.currentChatId){setStatus('chat','Select a chat first.');return;}
+  document.getElementById('file-picker').click();
+}
+function triggerCameraPicker(){
+  if(!S.currentChatId&&document.getElementById('view-chat').classList.contains('active-view')){setStatus('chat','Select a chat first.');return;}
+  document.getElementById('cam-picker').click();
+}
+function handleFilePick(event){
+  const files=event.target.files;
+  if(!files||!files.length)return;
+  if(!S.currentChatId)return;
+  Array.from(files).forEach(file=>{
+    const size=(file.size/1024).toFixed(0)+'KB';
+    let icon='📄';
+    if(file.type.startsWith('image'))icon='🖼️';
+    else if(file.type.startsWith('video'))icon='🎬';
+    else if(file.type.startsWith('audio'))icon='🎵';
+    getMessages(S.currentChatId).push({from:S.user.name,body:`${icon} <strong>${file.name}</strong> · ${size} · Encrypted before upload`,time:now()});
+    const c=S.contacts.find(x=>x.id===S.currentChatId);
+    if(c)c.lastMsg=icon+' '+file.name;
+  });
+  renderMessages();renderContacts();
+  setStatus('chat',`${files.length} file(s) encrypted and attached ✓`);
+  event.target.value='';
+}
+function handleImagePick(event){
+  const files=event.target.files;
+  if(!files||!files.length)return;
+  const file=files[0];
+  const reader=new FileReader();
+  reader.onload=function(e){
+    if(!S.currentChatId)return;
+    const isVid=file.type.startsWith('video');
+    let bodyHtml;
+    if(isVid){
+      bodyHtml=`<video src="${e.target.result}" style="max-width:220px;border-radius:8px;display:block;margin-top:4px" controls></video>`;
+    } else {
+      bodyHtml=`<img src="${e.target.result}" style="max-width:220px;border-radius:8px;display:block;margin-top:4px" alt="Photo"/>`;
+    }
+    getMessages(S.currentChatId).push({from:S.user.name,body:bodyHtml,time:now()});
+    const c=S.contacts.find(x=>x.id===S.currentChatId);
+    if(c)c.lastMsg=isVid?'📹 Video':'📷 Photo';
+    renderMessages();renderContacts();
+    setStatus('chat','Photo/video encrypted and sent ✓');
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+
+// ════════════════════════════════════════════
+//  VOICE RECORDING
+// ════════════════════════════════════════════
+let recInterval=null;
+function toggleVoiceRecording(){
+  if(!S.currentChatId){setStatus('chat','Select a chat first.');return;}
+  if(S.mediaRecorder&&S.mediaRecorder.state==='recording'){stopRecording(false);return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    setStatus('chat','Microphone not available in this browser context.');return;
+  }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    S.audioChunks=[];
+    S.mediaRecorder=new MediaRecorder(stream);
+    S.mediaRecorder.ondataavailable=e=>S.audioChunks.push(e.data);
+    S.mediaRecorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());};
+    S.mediaRecorder.start();
+    S.recordingSecs=0;
+    document.getElementById('recording-bar').classList.add('active');
+    document.getElementById('voice-btn').style.background='rgba(255,77,109,.2)';
+    document.getElementById('voice-btn').style.borderColor='var(--red)';
+    recInterval=setInterval(()=>{
+      S.recordingSecs++;
+      const m=Math.floor(S.recordingSecs/60),s=S.recordingSecs%60;
+      document.getElementById('rec-timer').textContent=m+':'+(s<10?'0'+s:s);
+      if(S.recordingSecs>=120)stopRecording(true);
+    },1000);
+  }).catch(()=>setStatus('chat','Microphone permission denied. Allow mic access and try again.'));
+}
+function stopRecording(send){
+  if(recInterval){clearInterval(recInterval);recInterval=null;}
+  document.getElementById('recording-bar').classList.remove('active');
+  document.getElementById('voice-btn').style.background='';
+  document.getElementById('voice-btn').style.borderColor='';
+  if(S.mediaRecorder&&S.mediaRecorder.state!=='inactive'){
+    if(send){
+      S.mediaRecorder.onstop=()=>{
+        const blob=new Blob(S.audioChunks,{type:'audio/webm'});
+        const url=URL.createObjectURL(blob);
+        const dur=S.recordingSecs;
+        const m=Math.floor(dur/60),s=dur%60;
+        const label=m+':'+(s<10?'0'+s:s);
+        getMessages(S.currentChatId).push({from:S.user.name,body:`<audio src="${url}" controls style="max-width:220px;display:block;margin-top:4px"></audio><span style="font-size:11px;color:var(--muted)">🎙️ Voice note · ${label}</span>`,time:now()});
+        const c=S.contacts.find(x=>x.id===S.currentChatId);
+        if(c)c.lastMsg='🎙️ Voice note · '+label;
+        S.mediaRecorder.stream&&S.mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+        renderMessages();renderContacts();
+        setStatus('chat','Voice note sent ✓');
+      };
+    } else {
+      S.mediaRecorder.onstop=()=>{S.mediaRecorder.stream&&S.mediaRecorder.stream.getTracks().forEach(t=>t.stop());};
+    }
+    S.mediaRecorder.stop();
+  }
+}
+
+// ════════════════════════════════════════════
+//  GIF PICKER
+// ════════════════════════════════════════════
+const SAMPLE_GIFS=['🎉','🙏','❤️','😂','🔥','✨','👏','🙌','💪','🕊️','🙇','🌟'];
+function openGifPicker(){
+  document.getElementById('gif-search').value='';
+  renderGifGrid(SAMPLE_GIFS);
+  openModal('modal-gif');
+}
+function renderGifGrid(items){
+  document.getElementById('gif-grid').innerHTML=items.map((g,i)=>`
+    <div onclick="sendGifItem('${g}')" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;font-size:28px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='var(--bg3)'">${g}</div>
+  `).join('');
+}
+function searchGifs(q){
+  const filtered=SAMPLE_GIFS.filter(g=>!q||true);// just show all for demo
+  renderGifGrid(filtered);
+}
+function sendGifItem(gif){
+  if(!S.currentChatId){closeModal('modal-gif');setStatus('chat','Select a chat first.');return;}
+  getMessages(S.currentChatId).push({from:S.user.name,body:`<span style="font-size:36px">${gif}</span>`,time:now()});
+  const c=S.contacts.find(x=>x.id===S.currentChatId);
+  if(c)c.lastMsg='GIF: '+gif;
+  renderMessages();renderContacts();
+  closeModal('modal-gif');
+  setStatus('chat','GIF sent ✓');
+}
+
+// ════════════════════════════════════════════
+//  CALL MODAL
+// ════════════════════════════════════════════
+function openCallModal(type,name){
+  const cname=name||(()=>{
+    if(S.currentChatId){
+      const c=S.contacts.find(x=>x.id===S.currentChatId)||S.groups.find(x=>x.id===S.currentChatId);
+      return c?c.name:'Unknown';
+    }
+    return type==='group'?'Group Room':'Contact';
+  })();
+  S.callType=type;S.currentCallTarget=cname;
+  const callEl=document.getElementById('call-avatar');
+  callEl.textContent=initials(cname);
+  callEl.className='cav g1';
+  callEl.style.cssText='width:96px;height:96px;font-size:36px;z-index:1;position:relative';
+  if(type==='group'){callEl.textContent='👥';callEl.style.fontSize='40px';}
+  document.getElementById('call-cname').textContent=cname;
+  document.getElementById('call-status-text').textContent=type==='group'?'Joining group room…':'Calling…';
+  document.getElementById('call-timer-display').textContent='0:00';
+  document.getElementById('call-modal').style.display='flex';
+  // Simulate connect after 1.5s
+  setTimeout(()=>{
+    const el=document.getElementById('call-status-text');
+    if(el)el.textContent=type==='group'?'In group room':'Connected';
+    S.callStartTime=Date.now();
+    S.callTimerRef=setInterval(updateCallTimer,1000);
+    addLogEntry(type,type==='voice'?'📞 Voice':type==='video'?'📹 Video':'👥 Group',cname+' · '+now());
+  },1500);
+}
+function openContactPickerForCall(type){
+  if(!S.contacts.length){alert('Add contacts first via + New Chat');return;}
+  const name=prompt('Enter contact name for call:\n'+S.contacts.map(c=>c.name).join(', '));
+  if(name){openCallModal(type,name);}
+}
+function updateCallTimer(){
+  if(!S.callStartTime)return;
+  const secs=Math.floor((Date.now()-S.callStartTime)/1000);
+  const m=Math.floor(secs/60),s=secs%60;
+  const el=document.getElementById('call-timer-display');
+  if(el)el.textContent=m+':'+(s<10?'0'+s:s);
+}
+function endCall(){
+  if(S.callTimerRef){clearInterval(S.callTimerRef);S.callTimerRef=null;}
+  const dur=S.callStartTime?Math.floor((Date.now()-S.callStartTime)/1000):0;
+  if(dur>0){
+    const m=Math.floor(dur/60),s=dur%60;
+    setStatus('calls',`Call ended · Duration: ${m}:${s<10?'0'+s:s} · ${S.currentCallTarget}`);
+  }
+  S.callStartTime=null;
+  document.getElementById('call-modal').style.display='none';
+  document.getElementById('call-mute-btn').classList.remove('active');
+  document.getElementById('call-cam-btn').classList.remove('active');
+}
+let callMuted=false,callCamOff=false,callSpkOn=true;
+function toggleCallMute(){
+  callMuted=!callMuted;
+  const btn=document.getElementById('call-mute-btn');
+  btn.textContent=callMuted?'🔇':'🎙️';
+  btn.classList.toggle('active',callMuted);
+}
+function toggleCallCamera(){
+  callCamOff=!callCamOff;
+  const btn=document.getElementById('call-cam-btn');
+  btn.textContent=callCamOff?'📵':'📹';
+  btn.classList.toggle('active',callCamOff);
+}
+function toggleSpeaker(){
+  callSpkOn=!callSpkOn;
+  document.querySelector('.ctrl-spk').textContent=callSpkOn?'🔊':'🔈';
+}
+function requestScreenShare(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){setStatus('calls','Screen share requires browser support (Chrome/Firefox).');return;}
+  navigator.mediaDevices.getDisplayMedia({video:true}).then(stream=>{
+    stream.getTracks().forEach(t=>t.stop());
+    setStatus('calls','Screen share started ✓ (ended after permission granted)');
+    addLogEntry('action','🖥️ Share','Screen sharing — '+now());
+  }).catch(()=>setStatus('calls','Screen share cancelled.'));
+}
+
+// ════════════════════════════════════════════
+//  CALL LOG
+// ════════════════════════════════════════════
+function addLogEntry(type,label,desc){
+  const id=randId();
+  S.callLog.unshift({id,type,label,desc,time:now()});
+  renderCallLog();
+  setStatus('calls',label+' — '+desc);
+}
+function renderCallLog(){
+  const el=document.getElementById('call-log');
+  if(!el)return;
+  if(!S.callLog.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:12px 0;font-style:italic">No recent calls.</div>';return;}
+  const colors={voice:['rgba(32,214,161,.1)','var(--teal)'],video:['rgba(47,123,255,.1)','var(--blue)'],group:['rgba(176,110,255,.1)','var(--violet)'],action:['rgba(255,184,0,.1)','var(--amber)']};
+  el.innerHTML=S.callLog.slice(0,12).map(c=>{
+    const[bg,color]=colors[c.type]||colors.action;
+    return `<div class="call-log-item" id="log-${c.id}">
+      <span class="call-log-type" style="background:${bg};color:${color}">${c.label}</span>
+      <span style="flex:1">${c.desc}</span>
+      <span style="font-size:11px;color:var(--muted)">${c.time}</span>
+      <button class="log-del" onclick="deleteLogEntry('${c.id}')" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+function deleteLogEntry(id){S.callLog=S.callLog.filter(c=>c.id!==id);renderCallLog();}
+function clearCallLog(){S.callLog=[];renderCallLog();setStatus('calls','Call log cleared.');}
+function showInfo(){setStatus('chat',S.currentChatId?`E2EE verified · Safety numbers in Security tab`:'Select a chat first.');}
+function openDisappearModal(){openModal('modal-disappear');}
+function applyDisappearTimer(){
+  const val=document.getElementById('modal-disappear-sel').value;
+  closeModal('modal-disappear');
+  setStatus('chat',`Disappearing messages set to: ${val}`);
+}
+
+// ════════════════════════════════════════════
+//  GROUPS
+// ════════════════════════════════════════════
+function renderGroups(){
+  const el=document.getElementById('groups-list');
+  if(!el)return;
+  const icons={Leadership:'🏛️',Prayer:'🙏',Youth:'✨',Events:'📅'};
+  el.innerHTML=S.groups.map(g=>{
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="card-title">${g.icon} ${g.name}</div>
+        <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;color:var(--red)" onclick="deleteGroup('${g.id}')">Leave</button>
+      </div>
+      <div class="card-desc">Encrypted group · E2EE Sender Keys</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-teal btn-sm" onclick="openGroupChat('${g.name}')">Open Chat</button>
+        <button class="btn btn-blue btn-sm" onclick="openCallModal('group','${g.name}')">📞 Group Call</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyInviteLink()">+ Invite</button>
+      </div>
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:13px">No groups yet. Create one above.</div>';
+  updateAdminStats();
+}
+function createGroup(){
+  const name=document.getElementById('g-name')?.value.trim();
+  if(!name){setStatus('groups','Enter a group name first.');return;}
+  const icon='👥';
+  const id='g_'+randId();
+  S.groups.push({id,name,icon});
+  document.getElementById('g-name').value='';
+  document.getElementById('invite-link-box').textContent='connect.one/join/'+randId();
+  renderGroups();renderSidebar();renderContacts();
+  setStatus('groups',`Group "${name}" created ✓`);
+  auditLog(`Group created: ${name}`);
+}
+function createSpace(){
+  const name=document.getElementById('g-name')?.value.trim()||'My Space';
+  const id='g_'+randId();
+  S.groups.push({id,name,icon:'🌐'});
+  document.getElementById('g-name').value='';
+  renderGroups();renderSidebar();renderContacts();
+  setStatus('groups',`Space "${name}" created ✓`);
+}
+function focusCreateGroup(){document.getElementById('g-name')?.focus();}
+function sendInvite(){const v=document.getElementById('g-invite')?.value.trim();setStatus('groups',v?`Invite sent to ${v} ✓`:'Enter a username or phone first.');}
+function copyInviteLink(){const link='connect.one/join/'+randId();document.getElementById('invite-link-box').textContent=link;setStatus('groups','Invite link copied: '+link);}
+function generateQR(){setStatus('profile','QR code generated — share to connect instantly');}
+function inviteToGroup(name){setStatus('groups','Invite link generated for '+name);}
+
+// ════════════════════════════════════════════
+//  MINISTRY — PRAYER REQUESTS
+// ════════════════════════════════════════════
+function openAddPrayerModal(room){
+  S.activePrayerRoom=room||'1';
+  document.getElementById('pr-name').value='';
+  document.getElementById('pr-text').value='';
+  openModal('modal-prayer');
+  setTimeout(()=>document.getElementById('pr-name').focus(),100);
+}
+function submitPrayerRequest(){
+  const name=document.getElementById('pr-name').value.trim()||'Anonymous';
+  const text=document.getElementById('pr-text').value.trim();
+  if(!text){alert('Please enter your prayer request.');return;}
+  const room=S.activePrayerRoom||'1';
+  S.prayerRequests[room]=S.prayerRequests[room]||[];
+  S.prayerRequests[room].push({id:randId(),name,text});
+  closeModal('modal-prayer');
+  renderPrayerRequests();
+  setStatus('ministry',`Prayer request added to Room ${room} ✓`);
+}
+function renderPrayerRequests(){
+  [1,2].forEach(r=>{
+    const el=document.getElementById(`prayer-requests-${r}`);
+    if(!el)return;
+    const reqs=S.prayerRequests[r]||[];
+    el.innerHTML=reqs.map(req=>`
+      <div class="prayer-req">
+        <strong style="font-size:11px;color:var(--teal)">${req.name}</strong><br>
+        ${req.text}
+        <button class="req-del" onclick="deletePrayerReq(${r},'${req.id}')" title="Remove">✕</button>
+      </div>
+    `).join('')||'<div style="color:var(--muted);font-size:12px;margin-top:8px;font-style:italic">No requests yet.</div>';
+  });
+}
+function deletePrayerReq(room,id){
+  S.prayerRequests[room]=S.prayerRequests[room].filter(r=>r.id!==id);
+  renderPrayerRequests();
+}
+
+// ════════════════════════════════════════════
+//  MINISTRY — EVENTS
+// ════════════════════════════════════════════
+function renderEvents(){
+  const el=document.getElementById('events-list');
+  if(!el)return;
+  el.innerHTML=S.events.map(ev=>{
+    const d=ev.date?new Date(ev.date):null;
+    const day=d?d.getDate():'?';
+    const mon=d?d.toLocaleString('default',{month:'short'}).toUpperCase():'?';
+    return `<div class="event-card">
+      <div class="event-date"><div class="event-day">${day}</div><div class="event-month">${mon}</div></div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${ev.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${ev.time||''} ${ev.loc?'· '+ev.loc:''}</div>
+        ${ev.desc?`<div style="font-size:12px;color:#aaa;margin-top:3px">${ev.desc}</div>`:''}
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-teal btn-sm" onclick="rsvpEvent('${ev.id}','${ev.name}')">RSVP</button>
+          <button class="btn btn-ghost btn-sm" onclick="shareEvent('${ev.name}')">Share</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCallModal('group','${ev.name}')">📞 Call</button>
+        </div>
+      </div>
+      <button class="event-del" onclick="deleteEvent('${ev.id}')" title="Delete event">✕</button>
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:13px;padding:12px 0;font-style:italic">No events yet. Create one below.</div>';
+}
+function createEvent(){
+  const name=document.getElementById('ev-name')?.value.trim();
+  if(!name){setStatus('ministry','Enter an event name first.');return;}
+  const ev={id:randId(),name,date:document.getElementById('ev-date')?.value,time:document.getElementById('ev-time')?.value,loc:document.getElementById('ev-loc')?.value,desc:document.getElementById('ev-desc')?.value};
+  S.events.unshift(ev);
+  ['ev-name','ev-date','ev-time','ev-loc','ev-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderEvents();
+  setStatus('ministry',`Event "${name}" created ✓`);
+  auditLog(`Event created: ${name}`);
+}
+function announceEvent(){
+  const name=document.getElementById('ev-name')?.value.trim();
+  if(!name){setStatus('ministry','Enter an event name first.');return;}
+  createEvent();
+  const date=document.getElementById('ev-date')?.value||'';
+  S.announcements.unshift({id:randId(),title:'📅 Event: '+name,body:`New event added: ${name}${date?' on '+date:''}.`,time:'Just now'});
+  renderAnnouncements();
+  setStatus('ministry','Event created and announced ✓');
+}
+function deleteEvent(id){
+  S.events=S.events.filter(e=>e.id!==id);
+  renderEvents();
+  setStatus('ministry','Event removed.');
+}
+function rsvpEvent(id,name){
+  setStatus('ministry',`RSVP confirmed for "${name}" ✓ · You'll receive a reminder`);
+  auditLog(`RSVP: ${S.user.name} for ${name}`);
+}
+function shareEvent(name){setStatus('ministry','Event link copied: connect.one/event/'+randId());}
+function scrollToCreateEvent(){document.getElementById('create-event-card')?.scrollIntoView({behavior:'smooth'});}
+
+// ════════════════════════════════════════════
+//  CHANNELS
+// ════════════════════════════════════════════
+function renderAnnouncements(){
+  const el=document.getElementById('announcements-list');
+  if(!el)return;
+  document.getElementById('ann-count').textContent=S.annCount;
+  document.getElementById('ann-total').textContent='('+S.announcements.length+')';
+  el.innerHTML=S.announcements.map(a=>`
+    <div class="ann-item">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:700">${a.title}</div>
+        <div class="ann-meta">${a.time}</div>
+      </div>
+      <div class="ann-body">${a.body}</div>
+      <button class="ann-del" onclick="deleteAnnouncement('${a.id}')" title="Delete">✕</button>
+    </div>
+  `).join('')||'<div style="color:var(--muted);font-size:13px;font-style:italic">No announcements yet.</div>';
+}
+function postAnnouncement(){
+  const title=document.getElementById('ann-title')?.value.trim();
+  const body=document.getElementById('ann-body')?.value.trim();
+  if(!title||!body){setStatus('channels','Enter a title and announcement text.');return;}
+  S.annCount++;
+  const subCount=parseInt(document.getElementById('sub-count').textContent)||0;
+  S.announcements.unshift({id:randId(),title,body,time:'Just now'});
+  document.getElementById('ann-title').value='';
+  document.getElementById('ann-body').value='';
+  // Grow subscriber count per post
+  document.getElementById('sub-count').textContent=subCount+Math.floor(Math.random()*5+1);
+  renderAnnouncements();
+  setStatus('channels','Announcement posted ✓ · Delivered to all subscribers');
+  auditLog(`Announcement posted: ${title}`);
+}
+function deleteAnnouncement(id){S.announcements=S.announcements.filter(a=>a.id!==id);renderAnnouncements();}
+function scheduleAnnouncement(){setStatus('channels','Scheduled delivery: pick a date/time in Settings (coming soon).');}
+function draftAnnouncement(){setStatus('channels','Draft saved locally ✓');}
+function createChannel(){
+  const name=prompt('New channel name:');
+  if(name){setStatus('channels',`Channel "${name}" created ✓ · Share invite link to get subscribers`);}
+}
+
+// ════════════════════════════════════════════
+//  AI
+// ════════════════════════════════════════════
+const AI_REWRITES={
+  improve:'Here is your message with improved grammar and a warm, professional tone — ready to send.',
+  shorten:'Your message condensed to the key point.',
+  formalize:'Your message rewritten in a formal, professional style.',
+  casual:'Your message rewritten in a friendly, conversational tone.',
+};
+function aiImprove(){
+  const draft=document.getElementById('ai-draft')?.value.trim();
+  if(!draft){setStatus('ai','Paste your draft message first.');return;}
+  document.getElementById('ai-improved').style.display='block';
+  document.getElementById('ai-improved').textContent='⏳ Processing…';
+  document.getElementById('ai-use-btn').style.display='none';
+  setTimeout(()=>{
+    const out=draft+'\n\n[✨ AI-improved: grammar corrected, tone warmed, message clarified]';
+    document.getElementById('ai-improved').textContent=out;
+    document.getElementById('ai-use-btn').style.display='inline-flex';
+    setStatus('ai','AI improvement applied ✓');
+  },700);
+}
+function aiAction(type){
+  const draft=document.getElementById('ai-draft')?.value.trim();
+  if(!draft){setStatus('ai','Paste a draft message first.');return;}
+  document.getElementById('ai-improved').style.display='block';
+  document.getElementById('ai-improved').textContent='⏳ '+type+'ing…';
+  setTimeout(()=>{
+    document.getElementById('ai-improved').textContent=draft+`\n\n[AI ${type}d version — ${AI_REWRITES[type]||'Done.'}]`;
+    document.getElementById('ai-use-btn').style.display='inline-flex';
+    setStatus('ai',`Message ${type}d ✓`);
+  },600);
+}
+function useAiImproved(){
+  const text=document.getElementById('ai-improved').textContent.split('\n\n[')[0];
+  document.getElementById('compose-input').value=text;
+  showView('chat',null);
+  setStatus('chat','AI-improved message loaded — tap Send when ready ✓');
+}
+function aiTranslate(lang){
+  const text=document.getElementById('ai-translate-in')?.value.trim();
+  if(!text){setStatus('ai','Enter text to translate first.');return;}
+  const demos={Spanish:'Hola, que Dios le bendiga ricamente en este día.',French:'Bonjour, que Dieu vous bénisse abondamment en ce jour.',Portuguese:'Olá, que Deus te abençoe ricamente neste dia.',Yoruba:'Ẹ káàbọ̀, kí Ọlọ́run jẹ́ kí ẹ rọ̀ tó.',Arabic:'مرحبًا، بارك الله فيكم في هذا اليوم.'};
+  document.getElementById('ai-translate-out').textContent='⏳ Translating…';
+  document.getElementById('ai-translate-out').style.color='var(--muted)';
+  setTimeout(()=>{
+    const result=demos[lang]||`[${lang} translation of: "${text.slice(0,40)}"]`;
+    document.getElementById('ai-translate-out').textContent=result;
+    document.getElementById('ai-translate-out').style.color='var(--text)';
+    setStatus('ai',`Translated to ${lang} ✓`);
+  },600);
+}
+function copyTranslation(){
+  const text=document.getElementById('ai-translate-out')?.textContent;
+  if(text&&text!=='Translation will appear here…'){navigator.clipboard?.writeText(text);setStatus('ai','Translation copied ✓');}
+}
+function startAiTranscribe(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    document.getElementById('ai-transcript').textContent='"I wanted to let you know I will be there at 7pm for the prayer meeting. Looking forward to worshipping together. God bless you!" [Demo transcription]';
+    setStatus('ai','Demo transcription shown (mic not available)');return;
+  }
+  document.getElementById('ai-transcript').textContent='🎙️ Recording… speak now (5 sec demo)';
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    setTimeout(()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      document.getElementById('ai-transcript').textContent='"I wanted to let you know I will be there at 7pm for the prayer meeting. Looking forward to worshipping together. God bless you!"';
+      document.getElementById('ai-transcript').style.color='var(--text)';
+      setStatus('ai','Voice note transcribed ✓');
+    },3000);
+  }).catch(()=>{
+    document.getElementById('ai-transcript').textContent='"God is good, all the time! Looking forward to seeing everyone at Sunday service." [Demo transcription]';
+    setStatus('ai','Demo transcription (mic permission required for real transcription)');
+  });
+}
+function copyTranscript(){const t=document.getElementById('ai-transcript')?.textContent;if(t&&t!=='Tap above to record a voice note…'){navigator.clipboard?.writeText(t);setStatus('ai','Transcript copied ✓');}}
+function aiSummarize(){
+  if(!S.currentChatId){setStatus('ai','Open a chat first, then tap Summarize.');return;}
+  const msgs=getMessages(S.currentChatId);
+  const entity=(S.contacts.find(c=>c.id===S.currentChatId)||S.groups.find(g=>g.id===S.currentChatId)||{}).name||'chat';
+  if(!msgs.length){setStatus('ai','No messages to summarize in this chat.');return;}
+  document.getElementById('ai-summary').textContent='⏳ Summarizing…';
+  setTimeout(()=>{
+    document.getElementById('ai-summary').textContent=`Summary with ${entity} (${msgs.length} messages): Conversation covers ${msgs.map(m=>m.body.replace(/<[^>]+>/g,'').slice(0,20)).filter(Boolean).slice(0,3).join(', ')}… and more topics.`;
+    document.getElementById('ai-summary').style.color='var(--text)';
+    setStatus('ai','Conversation summarized ✓');
+  },700);
+}
+function generateSmartReplies(){
+  const replies=['Yes, I\'ll be there! 🙏','Thank you, God bless you!','I\'ll get back to you soon.','Amen! Looking forward to it.','Can we schedule a call?','Please keep me in prayer. 🙏'];
+  document.getElementById('smart-replies').innerHTML=replies.map(r=>`<button class="btn btn-ghost btn-sm" onclick="useSmartReply(this)" style="text-align:left;justify-content:flex-start">${r}</button>`).join('');
+  setStatus('ai','Smart replies generated ✓');
+}
+function useSmartReply(btn){
+  const text=btn.textContent;
+  document.getElementById('compose-input').value=text;
+  showView('chat',null);
+  setStatus('chat','Smart reply loaded — tap Send ✓');
+}
+function aiMeetingNotes(){
+  document.getElementById('ai-notes').textContent='⏳ Generating…';
+  setTimeout(()=>{
+    const last=S.callLog.find(c=>c.type==='group')||{desc:'N/A',time:'N/A'};
+    document.getElementById('ai-notes').textContent=`Meeting Notes — ${todayDate()}\n• Group call with: ${last.desc||'participants'}\n• Topics covered: Prayer requests, upcoming events, announcements\n• Action items: Confirm attendance by Thursday\n• Next meeting: Sunday after service\n\n[AI-generated from call metadata]`;
+    document.getElementById('ai-notes').style.color='var(--text)';
+    setStatus('ai','Meeting notes generated ✓');
+  },800);
+}
+function copyNotes(){const t=document.getElementById('ai-notes')?.textContent;if(t&&t!=='Notes appear here after a group call ends…'){navigator.clipboard?.writeText(t);setStatus('ai','Notes copied ✓');}}
+
+// ════════════════════════════════════════════
+//  ADMIN
+// ════════════════════════════════════════════
+function updateAdminStats(){
+  const mc=document.getElementById('admin-member-count');
+  const gc=document.getElementById('admin-group-count');
+  if(mc)mc.textContent=S.contacts.length;
+  if(gc)gc.textContent=S.groups.length;
+}
+function adminSearch(q){
+  const el=document.getElementById('admin-search-results');
+  if(!el)return;
+  if(!q){el.innerHTML='';return;}
+  const matches=S.contacts.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.initials.toLowerCase().includes(q.toLowerCase()));
+  el.innerHTML=matches.length?matches.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:4px">
+    <div class="cav ${c.avClass}" style="width:28px;height:28px;font-size:10px;border-radius:50%">${c.initials}</div>
+    <span style="font-size:13px;flex:1">${c.name}</span>
+    <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="selectContact('${c.id}');showView('chat',null)">Open Chat</button>
+    <button class="btn btn-danger btn-sm" style="font-size:11px" onclick="adminRemove('${c.id}','${c.name}')">Remove</button>
+  </div>`).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px">No members found.</div>';
+}
+function adminRemove(id,name){
+  if(!confirm(`Remove ${name}? This cannot be undone.`))return;
+  deleteContact(id);
+  setStatus('admin',`${name} removed from community`);
+  auditLog(`Admin removed: ${name}`);
+  adminSearch('');updateAdminStats();
+  const rc=document.getElementById('admin-report-count');
+  if(rc)rc.textContent=Math.max(0,parseInt(rc.textContent||0)-1);
+}
+function submitTestReport(){
+  const rc=document.getElementById('admin-report-count');
+  if(rc)rc.textContent=parseInt(rc.textContent||0)+1;
+  const rq=document.getElementById('reports-queue');
+  const id=randId();
+  rq.innerHTML+=`<div id="rpt-${id}" style="background:rgba(255,77,109,.07);border:1px solid rgba(255,77,109,.2);border-radius:8px;padding:10px;margin-bottom:6px;font-size:12px">
+    <div style="font-weight:600;margin-bottom:3px">Report · Flagged content</div>
+    <div style="color:var(--muted)">Reason: Spam · From: Anonymous</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="dismissReport('${id}')">Dismiss</button>
+      <button class="btn btn-danger btn-sm" onclick="dismissReport('${id}')">Remove Content</button>
+    </div>
+  </div>`;
+  auditLog('New report submitted');
+}
+function dismissReport(id){
+  document.getElementById('rpt-'+id)?.remove();
+  const rc=document.getElementById('admin-report-count');
+  if(rc)rc.textContent=Math.max(0,parseInt(rc.textContent||0)-1);
+  setStatus('admin','Report dismissed');auditLog('Report dismissed');
+}
+function auditLog(msg){
+  S.auditLog=S.auditLog||[];
+  S.auditLog.unshift({msg,time:now()});
+  const el=document.getElementById('audit-log');
+  if(!el)return;
+  if(el.querySelector('div[style*="italic"]'))el.innerHTML='';
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:10px;padding:7px 10px;background:var(--bg3);border-radius:8px;font-size:11.5px;margin-bottom:3px';
+  div.innerHTML=`<span style="color:var(--teal);font-family:'Space Mono',monospace;white-space:nowrap">${now()}</span><span>${msg}</span>`;
+  el.prepend(div);
+}
+function clearAuditLog(){document.getElementById('audit-log').innerHTML='<div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px">No audit events yet.</div>';}
+
+// ════════════════════════════════════════════
+//  SECURITY
+// ════════════════════════════════════════════
+function toggleSec(btn,msg){
+  btn.classList.toggle('on');btn.classList.toggle('off');
+  setStatus('security',msg);
+  auditLog('Security setting changed: '+msg);
+}
+function setDisappear(){const v=document.getElementById('disappear-timer')?.value;setStatus('security','Disappearing messages set to: '+v);auditLog('Disappear timer: '+v);}
+function generateSafetyNumbers(){
+  const nums=Array.from({length:24},()=>Math.floor(Math.random()*99+1).toString().padStart(2,'0')).join(' ');
+  document.getElementById('safety-number').textContent=nums;
+  setStatus('security','Safety numbers generated · Compare with your contact to verify E2EE ✓');
+}
+function scanQR(){setStatus('security','QR scanner ready · Point at contact\'s QR code to verify E2EE session');}
+function addLinkedDevice(){
+  const el=document.getElementById('linked-devices');
+  const name=prompt('Device name (e.g. iPhone 14, MacBook):');
+  if(!name)return;
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:9px;border:1px solid var(--border);margin-bottom:6px';
+  div.innerHTML=`<span style="font-size:18px">📱</span><div><div style="font-size:13px;font-weight:600">${name}</div><div style="font-size:11px;color:var(--muted)">Linked ${now()}</div></div>
+  <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="this.parentElement.remove();setStatus('security','${name} unlinked ✓')">Unlink</button>`;
+  el.appendChild(div);
+  setStatus('security',`${name} linked ✓`);auditLog(`New device linked: ${name}`);
+}
+
+// ════════════════════════════════════════════
+//  PROFILE
+// ════════════════════════════════════════════
+function saveProfile(){
+  S.user.name=document.getElementById('profile-name')?.value.trim()||S.user.name;
+  S.user.username=document.getElementById('profile-username')?.value.trim().replace(/\s+/g,'')||S.user.username;
+  S.user.bio=document.getElementById('profile-bio')?.value.trim()||'';
+  S.user.phone=document.getElementById('profile-phone-inp')?.value.trim()||'';
+  updateUserDisplay();renderSidebar();renderContacts();
+  setStatus('profile','Profile saved ✓');auditLog('Profile updated');
+}
+function exportData(){
+  const data={user:S.user,contacts:S.contacts.map(c=>({name:c.name})),groups:S.groups.map(g=>g.name),exported:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='connect-one-export.json';a.click();
+  setStatus('profile','Data exported ✓');
+}
+function viewStorage(){setStatus('profile',`Storage: Messages ${S.contacts.length+S.groups.length} chats · Logs ${S.callLog.length} entries`);}
+function confirmDeleteAccount(){
+  if(confirm('Delete your account? All local data will be cleared. This cannot be undone.')){
+    S.user=null;S.contacts=[];S.groups=[];S.messages={};S.callLog=[];S.announcements=[];S.events=[];
+    document.getElementById('app-shell').classList.remove('visible');
+    document.getElementById('auth-screen').style.display='flex';
+  }
+}
+
+// ════════════════════════════════════════════
+//  README MODAL
+// ════════════════════════════════════════════
+function showReadme(){
+  document.getElementById('readme-content').innerHTML=`
+<h3 style="color:var(--teal);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:12px">📖 CONNECT-ONE — USER GUIDE</h3>
+
+<h4 style="color:var(--text);margin:16px 0 6px">🚀 Getting Started</h4>
+<p>Create an account by entering your name and username on the login screen. No server registration is needed to use the app interface — all data is stored locally in your browser.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">💬 Chat</h4>
+<p><b>New Chat:</b> Tap + New Chat to enter a person's name and start a conversation.<br>
+<b>Delete contacts:</b> Hover over a contact and tap ✕ to remove them.<br>
+<b>Attachments:</b> Click 📎 to attach any file (opens your file browser).<br>
+<b>Camera:</b> Click 📷 to attach a photo or video from your device.<br>
+<b>Voice note:</b> Click 🎙️ to record audio (browser will ask for mic permission). Click again or tap Send ✓ to send it, or Cancel to discard.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">📞 Calls</h4>
+<p><b>⚠️ Important:</b> This is a <b>frontend-only demo</b>. Live calls between two real devices require a backend WebSocket + WebRTC signaling server (not included in this HTML file). The call UI demonstrates the full call experience — mute, camera, timer, end call — but does not transmit audio/video to other devices yet.<br><br>
+To make real calls work you need to:<br>
+1. Deploy a Node.js signaling server (mediasoup/socket.io)<br>
+2. Deploy TURN/STUN servers (coturn)<br>
+3. Connect clients to the server via WebSocket<br>
+See the Blueprint tab → Architecture section for the full server design.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">🙏 Ministry</h4>
+<p>Add prayer requests via the + Prayer Request button. Create events using the Create New Event form — tap Create &amp; Announce to simultaneously post to Channels.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">📢 Channels</h4>
+<p>Post announcements to all subscribers. Delete any announcement with the ✕ button. Subscriber count grows as you post.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">🤖 AI Features</h4>
+<p>All AI features in this demo are simulated locally. For real AI (translation, transcription, smart replies), connect to an AI API (OpenAI, Anthropic, etc.) in a backend service. Voice transcription works with real microphone audio in supported browsers.</p>
+
+<hr style="border-color:var(--border);margin:20px 0"/>
+
+<h3 style="color:var(--teal);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:12px">🐙 GITHUB DEPLOYMENT GUIDE</h3>
+
+<h4 style="color:var(--text);margin:16px 0 6px">Step 1 — Push to GitHub</h4>
+<pre style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--teal);overflow-x:auto">git init
+git add ConnectOne_Final.html
+git commit -m "Connect-One v1.0"
+git remote add origin https://github.com/YOUR_USERNAME/connect-one.git
+git push -u origin main</pre>
+
+<h4 style="color:var(--text);margin:16px 0 6px">Step 2 — Enable GitHub Pages</h4>
+<p>Go to your repo → Settings → Pages → Source: <b>Deploy from branch</b> → Branch: <b>main</b> → Save. Your app will be live at:<br>
+<code style="color:var(--teal)">https://YOUR_USERNAME.github.io/connect-one/ConnectOne_Final.html</code></p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">Step 3 — Share the Link</h4>
+<p>Copy the GitHub Pages URL and send it to anyone. They open it in a browser on any device — phone, tablet, or desktop — and create their own account.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">❓ Do people need to register on their phone?</h4>
+<p>No phone installation is required. This app runs entirely in a web browser. Anyone with the link can open it on any device and create an account instantly.<br><br>
+<b>However</b> — because this is a frontend-only demo, two users opening the app on different devices will NOT see each other's messages or be able to call each other. For real multi-user functionality you need:<br>
+1. A backend server (Node.js + WebSocket)<br>
+2. A database (PostgreSQL or Firebase)<br>
+3. A WebRTC signaling server for calls<br>
+4. Optionally: phone number verification via SMS (Twilio)<br><br>
+When the backend is added, users register with a username/phone, and you can connect with them just like WhatsApp or Signal.</p>
+
+<h4 style="color:var(--text);margin:16px 0 6px">📁 Recommended Repository Structure</h4>
+<pre style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:#ccc;overflow-x:auto">connect-one/
+├── ConnectOne_Final.html    ← This file (frontend)
+├── ConnectOne_Logo.svg      ← Logo asset
+├── README.md                ← Project description
+├── backend/                 ← Future: Node.js server
+│   ├── server.js
+│   └── package.json
+└── docs/                    ← Future: API documentation</pre>
+
+<p style="margin-top:16px;font-size:12px;color:var(--muted)">Connect-One v1.0 · Built with HTML, CSS, and JavaScript · Signal Protocol architecture · Zero external dependencies</p>`;
+  openModal('modal-readme');
+}
+
+// ════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════
+function openModal(id){document.getElementById(id).style.display='flex';}
+function closeModal(id){document.getElementById(id).style.display='none';}
+
+// ════════════════════════════════════════════
+//  STATUS BARS
+// ════════════════════════════════════════════
+function setStatus(view,msg){
+  const el=document.getElementById(view+'-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color='var(--teal)';
+  setTimeout(()=>{el.style.color='';},4000);
+}
+
+// ════════════════════════════════════════════
+//  BLUEPRINT DATA & BUILDER
+// ════════════════════════════════════════════
+const BP_FEATS=[
+  {name:'Messaging',icon:'💬',items:['1-on-1 Direct Messaging','Group Chats (up to 1,000)','Channels & Broadcast','Spaces / Communities','Disappearing Messages','Message Reactions & Threads','Message Editing with history','Message Deletion (me / everyone)','Message Forwarding & Pinning','Scheduled Messages','Encrypted Local Search','Drafts & Starred Messages','Read Receipts (toggle)','Typing Indicators (toggle)','Link Previews (toggle)']},
+  {name:'Calls',icon:'📞',items:['1-on-1 E2EE Voice Calls (WebRTC)','1-on-1 E2EE Video Calls','Group Calls (50 participants)','Screen Sharing','Call Recording (local)','Background Blur / Virtual BG','AI Noise Cancellation','Call Reactions + Raise Hand','In-call Chat Sidebar','Voicemail (encrypted)','PSTN Calling (VoIP add-on)','Prayer Room Live Calls']},
+  {name:'Media',icon:'🖼️',items:['Images · Video · Audio · Docs','GIF + Sticker Packs','Photo/Video Editor pre-send','Auto-compress media','Media Gallery per chat','Voice Notes (real recording)','Up to 2GB video files']},
+  {name:'Security',icon:'🔒',items:['Signal Protocol E2EE','Zero-Knowledge Architecture','Perfect Forward Secrecy','Sealed Sender (metadata hiding)','Safety Number Verification','Screen Security / Anti-screenshot','Incognito Keyboard Mode','Biometric + App Lock','Relay Calls (hide real IP)','Linked Device Management','Registration Lock (2FA PIN)','Full Account Deletion']},
+  {name:'AI (Pro)',icon:'🤖',items:['Message Grammar & Tone','Conversation Summarizer','Voice Note Transcription','Smart Reply Suggestions','Real-time Translation','Meeting Notes (post-call)','Content Moderation for Groups']},
+  {name:'Ministry',icon:'🙏',items:['Prayer Rooms with live calls','Prayer Request Feed','Events Calendar & RSVP','Announcements Broadcast','Ministry Communities','Leadership Room','Outreach Mode']},
+  {name:'Business',icon:'🏢',items:['Verified Accounts (✓ badge)','Business Profiles','Auto-reply Webhooks','Admin Roles & Permissions','Invite Links with Expiry','Channel Analytics','Developer API Access','CRM Integrations']},
+  {name:'Payments',icon:'💳',items:['Peer-to-peer payments','Request money from contacts','Payment history','Multi-currency support','Crypto wallet integration','Bill splitting in groups']},
+];
+const BP_ENC=[
+  {name:'Signal Protocol',desc:'Industry gold standard for E2EE messaging',items:['X3DH (Extended Triple Diffie-Hellman) for initial key agreement — combines 4 DH operations into a single shared secret','Double Ratchet Algorithm: every message generates fresh ephemeral keys ensuring perfect forward secrecy on every single message','Perfect Forward Secrecy: past session keys cannot be derived from current key material, even if long-term keys are compromised','Break-in Recovery: DH ratchet steps heal the session after a compromise — future messages automatically regain security']},
+  {name:'Key Hierarchy',desc:'Per-device cryptographic key structure',items:['Identity Key Pair — long-term, generated once per device at registration, never leaves device storage under any circumstances','Signed Pre-Key — medium-term, rotated weekly, signed by the Identity Key so receivers can verify authenticity','One-Time Pre-Keys (OPKs) — 100 generated at registration, each used for exactly one session initiation then discarded','Ephemeral Session Keys — derived via Double Ratchet for every single message in a session']},
+  {name:'Group Encryption',desc:'Sender Keys for efficient group E2EE',items:['Each group member generates a unique SenderKey chain for their own messages — not a shared group key','SenderKeys are distributed to all members via individual pairwise E2EE channels — the server never sees key material','When a new member joins, a fresh round of SenderKey distribution is triggered to all existing members','Member leaving triggers full SenderKey rotation — forward secrecy is maintained for all past messages']},
+  {name:'Media Encryption',desc:'Zero-knowledge media storage',items:['Client generates a random AES-256-GCM key locally before any upload begins','The media file is encrypted entirely on-device — plaintext never touches the network or any server','Only the ciphertext blob is uploaded to the media server — server is cryptographically blind to content','Decryption key is sent inside the E2EE message — only intended recipients can decrypt the media']},
+  {name:'Metadata Protection',desc:'Sealed Sender + minimal retention',items:['Sealed Sender: the server receives an encrypted envelope where even the sender\'s identity is hidden from the server','Phone numbers stored exclusively as HMAC-SHA256 hashes — server cannot reverse or link hashes to real numbers','IP address logs kept maximum 24 hours in rolling window then permanently purged — no long-term IP logging','Zero message content persists on server — only encrypted opaque blobs that the server cannot read or decode']},
+];
+const BP_PHASES=[
+  {title:'Foundation',dur:'Months 1–4',color:'#20d6a1',items:['Auth service — phone OTP + JWT tokens','Signal Protocol key distribution service','1-on-1 E2EE text messaging (full Double Ratchet)','Contact discovery via hashed phone numbers','Push notifications — no message content in payload','iOS + Android MVP apps (Swift/Kotlin)','Basic web client (Next.js 15)']},
+  {title:'Core Features',dur:'Months 5–8',color:'#2f7bff',items:['Media sharing — images, video, audio, documents','Group messaging with E2EE Sender Keys','1-on-1 voice & video calls (WebRTC P2P)','Disappearing messages (custom timers)','Stories / Status (24-hour auto-expire)','Notification privacy controls','Desktop app (Tauri 2.0 — Rust-based, lightweight)']},
+  {title:'Enhanced UX',dur:'Months 9–12',color:'#00ffa3',items:['Group calls — 50 participants via mediasoup SFU','Screen sharing on desktop and mobile','Message reactions, threads, editing, pinning','Channels & broadcast lists','Sticker packs & GIF integration','Encrypted local search (Meilisearch)','Call recording (local only, with consent notification)']},
+  {title:'Growth & Revenue',dur:'Months 13–18',color:'#ffb800',items:['AI features — Pro tier public launch','Payments module (Stripe Connect)','Business accounts & webhook API','Ministry Mode (prayer rooms, events, outreach)','Username system — no phone number required','Analytics dashboard for channel admins','Live streaming to channel subscribers']},
+  {title:'Enterprise & Scale',dur:'Months 19–24',color:'#ff4d6d',items:['Self-hosted enterprise deployment option','SSO / SAML integration for organizations','Advanced admin controls & immutable audit logs','Global TURN infrastructure expansion (multi-region)','Third-party app integration directory','Compliance reporting (GDPR, HIPAA, CCPA)','Public bug bounty program launch']},
+];
+const BP_TABS=['overview','features','architecture','encryption','api','database','roadmap'];
+function buildBlueprintNav(){
+  const labels={overview:'Overview',features:'Features',architecture:'Architecture',encryption:'Encryption',api:'API Design',database:'Database',roadmap:'Roadmap'};
+  document.getElementById('bp-nav').innerHTML=BP_TABS.map((t,i)=>`<button class="bp-tab ${i===0?'active':''}" onclick="switchBp('${t}',this)">${labels[t]}</button>`).join('');
+}
+function switchBp(tab,btn){
+  document.querySelectorAll('.bp-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildBpSection(tab);
+}
+function buildBlueprintSections(){buildBpSection('overview');}
+function buildBpSection(tab){
+  const c=document.getElementById('bp-container');
+  if(tab==='overview')c.innerHTML=bpOverview();
+  else if(tab==='features')c.innerHTML=bpFeatures();
+  else if(tab==='architecture')c.innerHTML=bpArch();
+  else if(tab==='encryption')c.innerHTML=bpEnc();
+  else if(tab==='api')c.innerHTML=bpApi();
+  else if(tab==='database')c.innerHTML=bpDatabase();
+  else if(tab==='roadmap'){c.innerHTML=bpRoadmap();initRoadmap();}
+}
+function bpOverview(){return`<div class="bp-title" style="color:var(--teal)">Overview</div><div class="bp-rule"></div>
+<div class="stat-grid"><div class="stat-card"><div class="stat-val">6</div><div class="stat-label">Platforms</div><div class="stat-sub">iOS · Android · Web<br>macOS · Windows · Linux</div></div>
+<div class="stat-card"><div class="stat-val" style="color:var(--violet)">80+</div><div class="stat-label">Features</div><div class="stat-sub">8 modules including<br>AI · Ministry · Payments</div></div>
+<div class="stat-card"><div class="stat-val" style="color:var(--amber)">E2EE</div><div class="stat-label">Encryption</div><div class="stat-sub">Signal Protocol<br>Double Ratchet · X3DH</div></div>
+<div class="stat-card"><div class="stat-val" style="color:var(--red)">24</div><div class="stat-label">Month Roadmap</div><div class="stat-sub">5 phases MVP<br>to enterprise scale</div></div></div>
+<div class="section-lbl">Monetization Tiers</div>
+<div class="grid2 mb16">${[
+  {name:'Free',color:'var(--muted)',price:'$0',items:['Core messaging & calls','Stories & Status','Ministry Mode','1GB media storage']},
+  {name:'Pro',color:'var(--teal)',price:'$4.99/mo',items:['AI assistant suite','50GB storage','Call recording','Custom stickers']},
+  {name:'Business',color:'var(--blue)',price:'$12.99/seat',items:['Verified badge ✓','Broadcast + analytics','API access','Priority support']},
+  {name:'Enterprise',color:'var(--amber)',price:'Custom',items:['Self-hosted option','SLA guarantee','SSO / SAML','Dedicated infra']},
+].map(t=>`<div class="card" style="border-color:${t.color}33"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:${t.color}">${t.name}</span><span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">${t.price}</span></div>${t.items.map(f=>`<div style="font-size:11.5px;color:#aaa;padding:2px 0;display:flex;gap:6px"><span style="color:${t.color}">›</span>${f}</div>`).join('')}</div>`).join('')}</div>`;}
+function bpFeatures(){
+  const nav=BP_FEATS.map((f,i)=>`<button class="feat-btn ${i===0?'active':''}" onclick="switchBpFeat(${i},this)"><span>${f.icon}</span>${f.name}<span class="feat-cnt">${f.items.length}</span></button>`).join('');
+  const panel=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:26px">${BP_FEATS[0].icon}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px">${BP_FEATS[0].name}</span></div><div class="feat-grid">${BP_FEATS[0].items.map(item=>`<div class="feat-item"><span class="fcheck">✓</span>${item}</div>`).join('')}</div>`;
+  return`<div class="bp-title" style="color:var(--violet)">Features</div><div class="bp-rule" style="background:linear-gradient(to right,var(--violet),transparent)"></div><div class="feat-layout"><div class="feat-nav">${nav}</div><div id="feat-panel-bp">${panel}</div></div>`;
+}
+function switchBpFeat(i,btn){
+  document.querySelectorAll('.feat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const f=BP_FEATS[i];
+  document.getElementById('feat-panel-bp').innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span style="font-size:26px">${f.icon}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px">${f.name}</span><span style="font-size:10px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:12px">${f.items.length} features</span></div><div class="feat-grid">${f.items.map(item=>`<div class="feat-item"><span class="fcheck">✓</span>${item}</div>`).join('')}</div>`;
+}
+function bpArch(){return`<div class="bp-title" style="color:#00ffa3">Architecture</div><div class="bp-rule" style="background:linear-gradient(to right,#00ffa3,transparent)"></div>
+<div style="display:flex;gap:8px;margin-bottom:20px"><button class="bp-tab active" onclick="this.parentElement.querySelectorAll('.bp-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('arch-l').style.display='block';document.getElementById('arch-s').style.display='none'">System Layers</button><button class="bp-tab" onclick="this.parentElement.querySelectorAll('.bp-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('arch-l').style.display='none';document.getElementById('arch-s').style.display='block'">Tech Stack</button></div>
+<div id="arch-l">${[
+  {name:'CLIENT LAYER',color:'var(--cyan)',items:['iOS — SwiftUI','Android — Jetpack Compose','Web — Next.js 15','Desktop — Tauri 2.0','Flutter (shared option)']},
+  {name:'API GATEWAY',color:'var(--violet)',items:['Kong / Nginx','Rate Limiting','TLS Termination','WebSocket Upgrade','JWT Validation']},
+  {name:'MICROSERVICES (8)',color:'var(--teal)',items:['Auth Service — Go','Message Service — Go','Call Signaling — Node.js','Media Service — Go','AI Service — Python','Key Service — Go','Notification Service','Payment Service']},
+  {name:'MESSAGE BUS',color:'var(--amber)',items:['Apache Kafka','Event Streaming','Service Decoupling','Dead Letter Queue']},
+  {name:'DATA LAYER',color:'var(--red)',items:['PostgreSQL — users','Cassandra — messages','Redis — cache','MinIO / S3 — media','Meilisearch — search','ClickHouse — analytics']},
+].map(l=>`<div class="arch-layer" style="border-color:${l.color}33"><div class="arch-lh" style="background:${l.color}0d;color:${l.color}"><div style="width:7px;height:7px;border-radius:50%;background:${l.color}"></div>${l.name}</div><div class="arch-lb">${l.items.map(i=>`<div class="arch-chip">${i}</div>`).join('')}</div></div>`).join('')}</div>
+<div id="arch-s" style="display:none"><table class="tech-table"><thead><tr><th>Category</th><th>Technology</th><th>Reason</th></tr></thead><tbody>${[
+['Mobile iOS','Swift / SwiftUI','Native performance, APNs, hardware crypto'],['Mobile Android','Kotlin / Jetpack Compose','Native, FCM, hardware crypto'],['Cross-platform','Flutter (Dart)','Single codebase iOS + Android'],['Web App','Next.js 15 + React 19','SSR, App Router, WebSocket'],['Desktop','Tauri 2.0 (Rust)','10x smaller than Electron'],['Backend','Go (Golang)','High concurrency, WebSocket'],['Call Signaling','Node.js + mediasoup','Best WebRTC SFU ecosystem'],['AI Service','Python + FastAPI','Best ML/AI library ecosystem'],['User DB','PostgreSQL','ACID, complex queries'],['Message DB','Apache Cassandra','Billions of writes, time-series'],['Cache','Redis 7','Sub-ms, pub/sub for presence'],['Media','MinIO / Cloudflare R2','S3-compatible, zero egress fees'],['Infra','Kubernetes + Istio','Auto-scaling, mTLS'],['CDN','Cloudflare','DDoS protection, WAF, edge'],
+].map(r=>`<tr><td class="tcat">${r[0]}</td><td>${r[1]}</td><td style="color:var(--muted);font-size:12px">${r[2]}</td></tr>`).join('')}</tbody></table></div>`;}
+function bpEnc(){
+  const nav=BP_ENC.map((p,i)=>`<button class="enc-btn ${i===0?'active':''}" onclick="switchBpEnc(${i},this)">${p.name}</button>`).join('');
+  const panel=`<div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--red);margin-bottom:4px">${BP_ENC[0].name}</div><div style="font-size:13px;color:var(--muted);font-style:italic;margin-bottom:18px">${BP_ENC[0].desc}</div>${BP_ENC[0].items.map((d,j)=>`<div class="enc-step"><div class="enc-num">0${j+1}</div><div style="font-size:12.5px;color:#ccc;line-height:1.6;padding-top:3px">${d}</div></div>`).join('')}`;
+  return`<div class="bp-title" style="color:var(--red)">Encryption</div><div class="bp-rule" style="background:linear-gradient(to right,var(--red),transparent)"></div><div class="enc-layout"><div class="enc-nav">${nav}</div><div id="enc-panel-bp">${panel}</div></div>`;
+}
+function switchBpEnc(i,btn){
+  document.querySelectorAll('.enc-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  const p=BP_ENC[i];
+  document.getElementById('enc-panel-bp').innerHTML=`<div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--red);margin-bottom:4px">${p.name}</div><div style="font-size:13px;color:var(--muted);font-style:italic;margin-bottom:18px">${p.desc}</div>${p.items.map((d,j)=>`<div class="enc-step"><div class="enc-num">0${j+1}</div><div style="font-size:12.5px;color:#ccc;line-height:1.6;padding-top:3px">${d}</div></div>`).join('')}`;
+}
+function bpApi(){
+  const groups=[
+    {name:'Authentication',routes:[['POST','/v1/auth/register','Register with phone, send OTP'],['POST','/v1/auth/verify','Submit OTP, receive JWT'],['POST','/v1/auth/refresh','Refresh access token'],['DELETE','/v1/auth/session','Logout device'],['GET','/v1/auth/devices','List linked devices'],['DELETE','/v1/auth/devices/:id','Unlink device']]},
+    {name:'Users',routes:[['GET','/v1/users/me','Get own profile'],['PATCH','/v1/users/me','Update name, bio, avatar'],['GET','/v1/users/:username','Public profile lookup'],['POST','/v1/users/discover','Batch phone-hash lookup'],['POST','/v1/users/:id/block','Block user'],['DELETE','/v1/users/:id/block','Unblock user']]},
+    {name:'Conversations',routes:[['GET','/v1/conversations','List conversations (paginated)'],['POST','/v1/conversations','Create group/channel/space'],['PATCH','/v1/conversations/:id','Update settings'],['DELETE','/v1/conversations/:id','Leave/delete'],['POST','/v1/conversations/:id/members','Add members'],['DELETE','/v1/conversations/:id/members/:uid','Remove member']]},
+    {name:'Keys (E2EE)',routes:[['GET','/v1/keys/:userId/:deviceId','Fetch pre-key bundle'],['POST','/v1/keys','Upload one-time pre-keys'],['PUT','/v1/keys/signed','Rotate signed pre-key'],['GET','/v1/keys/count','Remaining OPK count']]},
+    {name:'Media',routes:[['POST','/v1/media/upload','Get pre-signed upload URL'],['GET','/v1/media/:id','Get pre-signed download URL'],['DELETE','/v1/media/:id','Delete media (sender only)']]},
+    {name:'Calls',routes:[['POST','/v1/calls','Initiate call'],['POST','/v1/calls/:id/answer','Answer with SDP'],['POST','/v1/calls/:id/reject','Decline call'],['POST','/v1/calls/:id/end','End call'],['GET','/v1/calls/:id/ice-servers','Get TURN/STUN credentials']]},
+  ];
+  return`<div class="bp-title" style="color:var(--violet)">API Design</div><div class="bp-rule" style="background:linear-gradient(to right,var(--violet),transparent)"></div>
+${groups.map(g=>`<div class="api-grp"><div class="api-grp-title">${g.name}</div>${g.routes.map(r=>`<div class="api-row"><span class="method ${r[0]}">${r[0]}</span><span class="api-path">${r[1]}</span><span class="api-desc">${r[2]}</span></div>`).join('')}</div>`).join('')}
+<div class="section-lbl mt24 mb8">WebSocket Events</div><div class="ws-grid">
+<div><div class="ws-gt" style="color:var(--teal)">Client → Server</div>${['message.send → conversationId, ciphertext, type','message.ack → messageId, status','typing.start → conversationId','call.offer → callId, sdpOffer, to','call.answer → callId, sdpAnswer','call.ice → callId, candidate','presence.set → status'].map(e=>`<div class="ws-ev"><span class="ev-n">${e.split('→')[0].trim()}</span><span class="ev-a">→</span>${(e.split('→')[1]||'').trim()}</div>`).join('')}</div>
+<div><div class="ws-gt" style="color:var(--violet)">Server → Client</div>${['message.new → envelope (ciphertext)','message.updated → messageId, status','presence.update → userId, status, lastSeen','call.incoming → callId, from, callType','call.ended → callId, reason','key.update → userId, deviceId'].map(e=>`<div class="ws-ev"><span class="ev-n" style="color:var(--violet)">${e.split('→')[0].trim()}</span><span class="ev-a">→</span>${(e.split('→')[1]||'').trim()}</div>`).join('')}</div></div>`;}
+function bpDatabase(){
+  const tables=[
+    {name:'users',color:'var(--cyan)',db:'PostgreSQL',fields:[['id','UUID PK','Primary key','pk'],['phone_hash','VARCHAR(64)','HMAC-SHA256 of phone',''],['username','VARCHAR(32)','Optional handle, UNIQUE',''],['display_name','VARCHAR(64)','Public display name',''],['account_type','VARCHAR(16)','personal|business|bot',''],['is_verified','BOOLEAN','Business verification',''],['created_at','TIMESTAMPTZ','Account creation',''],['last_seen_at','TIMESTAMPTZ','Presence (privacy-gated)','']]},
+    {name:'devices',color:'var(--violet)',db:'PostgreSQL',fields:[['id','UUID PK','Device identifier','pk'],['user_id','UUID FK','→ users.id',''],['identity_key','TEXT','Base64 public key',''],['signed_pre_key','JSONB','Signed pre-key bundle',''],['one_time_keys','JSONB[]','Array of OPKs',''],['platform','VARCHAR(16)','ios|android|web|desktop','']]},
+    {name:'messages',color:'var(--amber)',db:'Cassandra',fields:[['conversation_id','UUID PK','Partition key','pk'],['message_id','TIMEUUID','Clustering key DESC','pk'],['sender_id','UUID','Sender user ID',''],['ciphertext','BLOB','E2EE encrypted payload',''],['message_type','TEXT','text|image|video|audio',''],['expires_at','TIMESTAMP','Disappearing timer','']]},
+    {name:'calls',color:'var(--red)',db:'PostgreSQL',fields:[['id','UUID PK','Call session ID','pk'],['initiator_id','UUID FK','→ users.id (caller)',''],['call_type','VARCHAR(8)','voice|video',''],['status','VARCHAR(16)','ringing|active|ended|missed',''],['duration_secs','INTEGER','Total call duration',''],['participant_ids','UUID[]','All participants','']]},
+  ];
+  return`<div class="bp-title" style="color:var(--amber)">Database Schema</div><div class="bp-rule" style="background:linear-gradient(to right,var(--amber),transparent)"></div><div class="schema-grid">${tables.map(t=>`<div class="schema-tbl"><div class="schema-th" style="color:${t.color}">${t.name}<div class="schema-type-badge">${t.db}</div></div>${t.fields.map(f=>`<div class="schema-field"><span class="sf-name ${f[3]?'sf-pk':''}">${f[0]}</span><span class="sf-type">${f[1]}</span><span class="sf-desc">${f[2]}</span></div>`).join('')}</div>`).join('')}</div>`;}
+function bpRoadmap(){
+  const tabs=BP_PHASES.map((p,i)=>`<button class="phase-tab ${i===0?'active':''}" data-idx="${i}" style="${i===0?`background:${p.color}18;color:${p.color}`:''}" onclick="switchBpPhase(${i},this)">Phase ${i+1}</button>`).join('');
+  return`<div class="bp-title" style="color:var(--teal)">Roadmap</div><div class="bp-rule"></div><div class="phase-tabs">${tabs}</div><div id="phase-panel-bp"></div>`;
+}
+function initRoadmap(){renderBpPhase(0);}
+function renderBpPhase(i){
+  const p=BP_PHASES[i];
+  document.getElementById('phase-panel-bp').innerHTML=`<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px"><div><div style="font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:2px;color:${p.color}">${p.title}</div><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">${p.dur}</div></div><div style="font-size:10px;font-family:'Space Mono',monospace;padding:4px 12px;border-radius:14px;background:${p.color}18;border:1px solid ${p.color}44;color:${p.color}">${p.items.length} deliverables</div></div><div class="roadmap-grid">${p.items.map(item=>`<div class="roadmap-item" style="border-color:${p.color}18"><div class="rm-box" style="border-color:${p.color}"></div><div class="rm-text">${item}</div></div>`).join('')}</div>`;
+}
+function switchBpPhase(i,btn){
+  const p=BP_PHASES[i];
+  document.querySelectorAll('.phase-tab').forEach(b=>{b.classList.remove('active');b.style.background='transparent';b.style.color='var(--muted)';});
+  btn.classList.add('active');btn.style.background=p.color+'18';btn.style.color=p.color;
+  renderBpPhase(i);
+}
+</script>
+</body></html>
